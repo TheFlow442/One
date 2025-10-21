@@ -3,24 +3,34 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { initializeFirebase } from '@/firebase';
+import { initializeApp, getApps } from 'firebase/app';
 
 const SESSION_COOKIE_NAME = 'volta_view_session';
+
+// This configuration is safe to be in client-side code.
+const firebaseConfig = JSON.parse(process.env.NEXT_PUBLIC_FIREBASE_CONFIG!);
+
+// This function is the root of the problem. It gets called from server actions,
+// but because it's in the same file, the bundler can pull it into the edge runtime.
+// We will initialize the app directly inside the functions that need it.
+function getFirebaseAuth() {
+  if (!getApps().length) {
+    initializeApp(firebaseConfig);
+  }
+  return getAuth();
+}
+
 
 export type State = {
   message?: string | null;
   success?: boolean;
 };
 
-// This function will be called by Next.js's infrastructure, which is a Node.js environment.
-initializeFirebase();
-const auth = getAuth();
-
-
 export async function authenticate(
   prevState: State | undefined,
   formData: FormData
 ): Promise<State> {
+  const auth = getFirebaseAuth();
   try {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -48,6 +58,7 @@ export async function signup(
   prevState: State | undefined,
   formData: FormData
 ): Promise<State> {
+  const auth = getFirebaseAuth();
   try {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -62,7 +73,6 @@ export async function signup(
       path: '/',
     });
     
-    // Redirect to dashboard on successful signup
     redirect('/dashboard');
 
   } catch (error: any) {
