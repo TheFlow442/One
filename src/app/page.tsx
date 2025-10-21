@@ -203,7 +203,7 @@ export default function DashboardPage() {
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-yellow-500" /> Predictive Maintenance</CardTitle>
-          </Header>
+          </CardHeader>
           <CardContent className="space-y-4">
               <div className="flex justify-between items-center">
                   <div>
