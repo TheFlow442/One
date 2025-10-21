@@ -7,14 +7,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { createSession } from '@/lib/auth-actions';
 import { useRouter } from 'next/navigation';
+import { doc } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function SignupPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
 
   const handleSubmit = async (formData: FormData) => {
@@ -33,7 +36,16 @@ export default function SignupPage() {
 
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const idToken = await userCredential.user.getIdToken();
+        const user = userCredential.user;
+
+        // Create user document in Firestore
+        const userRef = doc(firestore, 'users', user.uid);
+        setDocumentNonBlocking(userRef, {
+            id: user.uid,
+            email: user.email
+        }, { merge: true });
+
+        const idToken = await user.getIdToken();
         await createSession(idToken);
         router.push('/dashboard');
     } catch (error: any) {
