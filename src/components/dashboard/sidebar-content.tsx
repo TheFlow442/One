@@ -18,16 +18,21 @@ import {
   Settings,
   History,
   Users,
-  BoltIcon
+  BoltIcon,
+  LogOutIcon
 } from "lucide-react";
-import { LogoutButton } from "@/app/dashboard/logout-button";
 import { usePathname } from "next/navigation";
+import { Button } from "../ui/button";
 
-export function SidebarContent as SidebarNavContent() {
+export function SidebarNavContent() {
     const pathname = usePathname();
 
     const isActive = (path: string) => {
-        return pathname === path;
+        // The root path should only be active if it's exactly the root.
+        if (path === '/') {
+            return pathname === '/';
+        }
+        return pathname.startsWith(path);
     }
 
   return (
@@ -41,7 +46,7 @@ export function SidebarContent as SidebarNavContent() {
       <SidebarContent className="flex-1">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton href="/dashboard" isActive={isActive('/dashboard')}>
+            <SidebarMenuButton href="/" isActive={isActive('/')}>
               <LayoutGrid />
               Dashboard
             </SidebarMenuButton>
@@ -94,7 +99,7 @@ export function SidebarContent as SidebarNavContent() {
                         <Users />
                         Community B
                     </SidebarMenuButton>
-                </SidebarMenuItem>
+                </MenuItem>
                  <SidebarMenuItem>
                     <SidebarMenuButton href="#" isActive={isActive('/community-c')}>
                         <Users />
@@ -106,7 +111,10 @@ export function SidebarContent as SidebarNavContent() {
 
       </SidebarContent>
       <SidebarFooter>
-        <LogoutButton />
+        <Button variant="outline" className="w-full" disabled>
+          <LogOutIcon className="mr-2 h-4 w-4" />
+          Sign Out
+        </Button>
       </SidebarFooter>
     </>
   );
