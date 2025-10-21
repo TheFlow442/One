@@ -32,10 +32,9 @@ export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
 
   const esp32DataRef = useMemoFirebase(() => {
-    if (!firestore) return null;
-    // Reading from a top-level collection for public access during testing.
-    return doc(firestore, `esp32_live_data/live_data`);
-  }, [firestore]);
+    if (!firestore || !user) return null;
+    return doc(firestore, `users/${user.uid}/esp32_data/live_data`);
+  }, [firestore, user]);
 
 
   const { data: esp32Data, isLoading: isEsp32DataLoading } = useDoc(esp32DataRef);
@@ -49,8 +48,15 @@ export default function DashboardPage() {
   const isConnected = !!esp32Data;
 
   // Combine loading states
-  const isLoading = isUserLoading || isEsp32DataLoading;
+  const isLoading = isUserLoading || (user && isEsp32DataLoading);
 
+  if (isUserLoading) {
+    return <div>Loading user...</div>
+  }
+
+  if (!user) {
+    return <div>Please log in to see the dashboard.</div>
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -239,5 +245,3 @@ export default function DashboardPage() {
       </div>
     </div>
   );
-
-    

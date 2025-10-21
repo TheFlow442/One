@@ -2,7 +2,6 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { Inter } from 'next/font/google';
-import DashboardLayout from './dashboard/layout';
 import { ThemeProvider } from '@/components/theme-provider';
 import { FirebaseClientProvider } from '@/firebase';
 
@@ -28,9 +27,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <FirebaseClientProvider>
-            <DashboardLayout>
-              {children}
-            </DashboardLayout>
+            {children}
           </FirebaseClientProvider>
           <Toaster />
         </ThemeProvider>
