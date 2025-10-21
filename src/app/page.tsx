@@ -32,26 +32,26 @@ export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
 
   const esp32DataRef = useMemoFirebase(() => {
-    // Wait until we have a user to construct the path
-    if (!firestore || !user) return null;
-    // Connect to the specific document for live ESP32 data for the logged-in user
-    return doc(firestore, `users/${user.uid}/esp32_data/live_data`);
-  }, [firestore, user]);
+    if (!firestore) return null;
+    // For testing with open rules, we don't need a user.
+    // In a production app, you'd re-introduce the !user check.
+    return doc(firestore, `users/user_123/esp32_data/live_data`);
+  }, [firestore]);
+
 
   const { data: esp32Data, isLoading: isEsp32DataLoading } = useDoc(esp32DataRef);
 
   const isLoading = isUserLoading || isEsp32DataLoading;
 
-  // Use live data if available, otherwise default to 0
-  const voltage = esp32Data?.voltage ?? 0;
-  const current = esp32Data?.current ?? 0;
-  const temperature = esp32Data?.temperature ?? 0;
-  const irradiance = esp32Data?.irradiance ?? 0;
+  const voltage = esp32Data?.voltage;
+  const current = esp32Data?.current;
+  const temperature = esp32Data?.temperature;
+  const irradiance = esp32Data?.irradiance;
   const isConnected = !!esp32Data;
 
-  const power = voltage * current;
+  const power = (voltage ?? 0) * (current ?? 0);
 
-  if (isLoading) {
+  if (isUserLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-xl">Loading Dashboard...</div>
@@ -91,7 +91,7 @@ export default function DashboardPage() {
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-400">{voltage.toFixed(1)} V</div>
+            {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold text-blue-400">{(voltage ?? 0).toFixed(1)} V</div>}
           </CardContent>
         </Card>
         <Card>
@@ -100,7 +100,7 @@ export default function DashboardPage() {
             <Waves className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-400">{current.toFixed(2)} A</div>
+            {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold text-blue-400">{(current ?? 0).toFixed(2)} A</div>}
           </CardContent>
         </Card>
         <Card>
@@ -109,7 +109,7 @@ export default function DashboardPage() {
             <PowerIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{power.toFixed(0)} W</div>
+             {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold">{power.toFixed(0)} W</div>}
           </CardContent>
         </Card>
         <Card>
@@ -118,7 +118,7 @@ export default function DashboardPage() {
             <Thermometer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{temperature.toFixed(1)} °C</div>
+             {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold">{(temperature ?? 0).toFixed(1)} °C</div>}
           </CardContent>
         </Card>
       </div>
@@ -175,7 +175,7 @@ export default function DashboardPage() {
             <Sun className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             <div className="text-2xl font-bold">{irradiance.toFixed(0)} <span className="text-base font-normal">W/m²</span></div>
+             {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold">{(irradiance ?? 0).toFixed(0)} <span className="text-base font-normal">W/m²</span></div>}
             <p className="text-xs text-muted-foreground">Panel Insolation</p>
           </CardContent>
         </Card>
@@ -247,3 +247,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
