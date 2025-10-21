@@ -55,7 +55,7 @@ export function SidebarNavContent() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton href="/systems" isActive={isActive('/systems')}>
+            <SidebarMenuButton href="/systems" isActive={isActive('/systems')}>_
               <Cpu />
               Systems
             </SidebarMenuButton>
@@ -108,9 +108,7 @@ export function SidebarNavContent() {
           </SidebarMenuItem>
         </SidebarMenu>
 
-      </SidebarContent>
-      <SidebarFooter>
-        <Card className="m-2 shadow-none">
+         <Card className="m-2 shadow-none mt-auto">
             <CardContent className="p-3">
                 <p className="text-sm text-muted-foreground">Today Generation</p>
                 <div className="flex items-baseline gap-2 mt-1">
@@ -119,6 +117,9 @@ export function SidebarNavContent() {
                 </div>
             </CardContent>
         </Card>
+
+      </SidebarContent>
+      <SidebarFooter>
       </SidebarFooter>
     </>
   );
