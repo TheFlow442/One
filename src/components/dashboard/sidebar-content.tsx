@@ -47,7 +47,7 @@ export function SidebarNavContent() {
             </Link>
         </div>
       </SidebarHeader>
-      <SidebarContent className="flex-1 flex flex-col">
+      <SidebarContent className="flex-1 flex flex-col justify-between">
         <div>
           <SidebarMenu>
             <SidebarMenuItem>
@@ -111,7 +111,7 @@ export function SidebarNavContent() {
           </SidebarMenu>
         </div>
 
-        <div className="mt-auto">
+        <div>
           <Card className="m-2 shadow-none">
               <CardContent className="p-3">
                   <p className="text-sm text-muted-foreground">Today Generation</p>
