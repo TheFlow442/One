@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
   Card,
@@ -18,31 +17,32 @@ import {
   Clock,
   Sun,
   AlertTriangle,
-  LineChart,
-  ArrowRight,
   User,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { CommunityDistributionChart } from '@/components/dashboard/community-distribution-chart';
 import { SolarGenerationChart } from '@/components/dashboard/solar-generation-chart';
 import { BatteryStateChart } from '@/components/dashboard/battery-state-chart';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 export default function DashboardPage() {
-  const [voltage, setVoltage] = useState(0);
-  const [current, setCurrent] = useState(0);
-  const [temperature, setTemperature] = useState(0);
-  const [irradiance, setIrradiance] = useState(0);
+  const firestore = useFirestore();
+  
+  const esp32DataRef = useMemoFirebase(() => {
+    if (!firestore) return null;
+    // Connect to the specific document for live ESP32 data
+    return doc(firestore, 'users/user_123/esp32_data/live_data');
+  }, [firestore]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setVoltage(230 + Math.random() * 5);
-      setCurrent(4 + Math.random() * 1.5);
-      setTemperature(35 + Math.random() * 10);
-      setIrradiance(600 + Math.random() * 200);
-    }, 4000);
+  const { data: esp32Data } = useDoc(esp32DataRef);
 
-    return () => clearInterval(interval);
-  }, []);
+  // Use live data if available, otherwise default to 0
+  const voltage = esp32Data?.voltage ?? 0;
+  const current = esp32Data?.current ?? 0;
+  const temperature = esp32Data?.temperature ?? 0;
+  const irradiance = esp32Data?.irradiance ?? 0;
+  const isConnected = !!esp32Data;
 
   const power = voltage * current;
 
@@ -114,14 +114,23 @@ export default function DashboardPage() {
             <Info className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
+             {isConnected ? (
+              <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  <span className="text-xl font-bold">Online</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                 </span>
-                <span className="text-xl font-bold">Online</span>
-            </div>
-            <p className="text-xs text-muted-foreground">ESP32 Connected</p>
+                <span className="text-xl font-bold">Offline</span>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">ESP32 Connection</p>
           </CardContent>
         </Card>
         <Card>
@@ -193,7 +202,7 @@ export default function DashboardPage() {
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-yellow-500" /> Predictive Maintenance</CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent className="space-y-4">
               <div className="flex justify-between items-center">
                   <div>
