@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { KeyRound, UserPlus } from 'lucide-react';
+import { UserPlus, AtSign, KeyRound } from 'lucide-react';
 import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { redirect } from 'next/navigation';
 
 export function SignupForm() {
   const [state, dispatch] = useFormState(signup, undefined);
@@ -22,36 +23,31 @@ export function SignupForm() {
         description: state.message,
       });
     }
-  }, [state, toast]);
+    if(state?.success) {
+      // No need to redirect here, the server action will do it.
+    }
+  }, [state]);
 
   return (
     <Card className="mt-4 w-full max-w-sm">
       <CardHeader>
         <CardTitle>Sign Up</CardTitle>
-        <CardDescription>Create a new admin account.</CardDescription>
+        <CardDescription>Create a new account.</CardDescription>
       </CardHeader>
       <CardContent>
         <form action={dispatch} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" placeholder="john.doe@example.com" required />
+            <div className="relative">
+              <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input id="email" name="email" type="email" placeholder="john.doe@example.com" required className="pl-10" />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" placeholder="••••••••" required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="adminKey">Admin Key</Label>
             <div className="relative">
               <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                id="adminKey"
-                name="adminKey"
-                type="password"
-                placeholder="••••••••"
-                required
-                className="pl-10"
-              />
+              <Input id="password" name="password" type="password" placeholder="••••••••" required className="pl-10" />
             </div>
           </div>
           <SignupButton />

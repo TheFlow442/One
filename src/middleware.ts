@@ -5,13 +5,22 @@ import { initializeAdminApp } from '@/firebase/admin';
 
 const SESSION_COOKIE_NAME = 'volta_view_session';
 
-initializeAdminApp();
+// Initialize Firebase Admin SDK. This should be done only once.
+// The try-catch block is to avoid re-initializing the app in hot-reload environments.
+try {
+  initializeAdminApp();
+} catch (e) {
+  console.log(e);
+}
+
 
 async function verifySessionCookie(cookie: string) {
   try {
+    // Using the firebase-admin SDK to verify the session cookie
     await getAuth().verifySessionCookie(cookie, true);
     return true;
   } catch (error) {
+    console.error('Session cookie verification failed:', error);
     return false;
   }
 }
@@ -28,10 +37,12 @@ export async function middleware(request: NextRequest) {
     isAuthenticated = await verifySessionCookie(sessionCookie);
   }
 
+  // If user is on auth page but already authenticated, redirect to dashboard
   if (isAuthPage && isAuthenticated) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
+  // If user is trying to access dashboard but is not authenticated, redirect to auth page
   if (isDashboard && !isAuthenticated) {
     return NextResponse.redirect(new URL('/', request.url));
   }
@@ -39,6 +50,7 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
+// Middleware should run on authentication page and dashboard pages
 export const config = {
   matcher: ['/', '/dashboard/:path*'],
 }

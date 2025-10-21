@@ -12,6 +12,7 @@ export type State = {
   success?: boolean;
 };
 
+// This function will be called by Next.js's infrastructure, which is a Node.js environment.
 initializeFirebase();
 const auth = getAuth();
 
@@ -50,16 +51,20 @@ export async function signup(
   try {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
-    const adminKey = formData.get('adminKey') as string;
-    const expectedKey = process.env.ADMIN_KEY || '1250solaradmin';
 
-    if (adminKey !== expectedKey) {
-        return { message: 'Invalid admin key provided.' };
-    }
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const idToken = await userCredential.user.getIdToken();
 
-    await createUserWithEmailAndPassword(auth, email, password);
+    cookies().set(SESSION_COOKIE_NAME, idToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7, // 1 week
+      path: '/',
+    });
+    
+    // Redirect to dashboard on successful signup
+    redirect('/dashboard');
 
-    return { success: true, message: 'Account created successfully! You can now sign in.' };
   } catch (error: any) {
      if (error.code === 'auth/email-already-in-use') {
       return { message: 'This email is already in use.' };
