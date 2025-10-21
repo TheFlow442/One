@@ -58,6 +58,12 @@ export default function DashboardPage() {
     return <div>Please log in to see the dashboard.</div>
   }
 
+  const maintenanceAlerts = [
+    { id: 1, title: 'Transient voltage spike', description: 'Edge node detected spike' },
+    { id: 2, title: 'Transient voltage spike', description: 'Edge node detected spike' },
+    { id: 3, title: 'Transient voltage spike', description: 'Edge node detected spike' },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -219,29 +225,19 @@ export default function DashboardPage() {
             <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-yellow-500" /> Predictive Maintenance</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
-                  <div>
-                      <p className="font-bold">Transient voltage spike</p>
-                      <p className="text-xs text-muted-foreground">Edge node detected spike</p>
-                  </div>
-                  <Badge variant="warning">warning</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                  <div>
-                      <p className="font-bold">Transient voltage spike</p>
-                      <p className="text-xs text-muted-foreground">Edge node detected spike</p>
-                  </div>
-                   <Badge variant="warning">warning</Badge>
-              </div>
-               <div className="flex justify-between items-center">
-                  <div>
-                      <p className="font-bold">Transient voltage spike</p>
-                      <p className="text-xs text-muted-foreground">Edge node detected spike</p>
-                  </div>
-                   <Badge variant="warning">warning</Badge>
-              </div>
+              {maintenanceAlerts.map((alert) => (
+                <div key={alert.id} className="flex justify-between items-center">
+                    <div>
+                        <p className="font-bold">{alert.title}</p>
+                        <p className="text-xs text-muted-foreground">{alert.description}</p>
+                    </div>
+                    <Badge variant="warning">warning</Badge>
+                </div>
+              ))}
           </CardContent>
         </Card>
       </div>
     </div>
   );
+}
+    
