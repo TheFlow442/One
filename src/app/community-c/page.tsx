@@ -9,13 +9,13 @@ import {
 import { CommunityEnergyTrendChart } from '@/components/dashboard/community-energy-trend-chart';
 import { Users } from 'lucide-react';
 
-export default function CommunityAPage() {
+export default function CommunityCPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
         <Users className="h-8 w-8" />
         <div>
-          <h1 className="text-3xl font-bold">Community A</h1>
+          <h1 className="text-3xl font-bold">Community C</h1>
           <p className="text-muted-foreground">
             Monitoring average load usage.
           </p>

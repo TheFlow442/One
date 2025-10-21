@@ -95,13 +95,13 @@ export function SidebarNavContent() {
               </SidebarMenuButton>
           </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="#" isActive={isActive('/community-b')}>
+              <SidebarMenuButton href="/community-b" isActive={isActive('/community-b')}>
                   <Users />
                   Community B
               </SidebarMenuButton>
           </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="#" isActive={isActive('/community-c')}>
+              <SidebarMenuButton href="/community-c" isActive={isActive('/community-c')}>
                   <Users />
                   Community C
               </SidebarMenuButton>
