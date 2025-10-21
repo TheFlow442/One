@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -28,7 +29,7 @@ import { doc } from 'firebase/firestore';
 
 export default function DashboardPage() {
   const firestore = useFirestore();
-  
+
   const esp32DataRef = useMemoFirebase(() => {
     if (!firestore) return null;
     // Connect to the specific document for live ESP32 data
@@ -98,7 +99,7 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Temperature</CardTitle>
+            <CardTitle className="text-sm font-medium">Panel Temperature</CardTitle>
             <Thermometer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -160,7 +161,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
              <div className="text-2xl font-bold">{irradiance.toFixed(0)} <span className="text-base font-normal">W/m²</span></div>
-            <p className="text-xs text-muted-foreground">Insolation level</p>
+            <p className="text-xs text-muted-foreground">Panel Insolation</p>
           </CardContent>
         </Card>
       </div>
@@ -231,3 +232,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
