@@ -46,7 +46,7 @@ export function SidebarNavContent() {
             </Link>
         </div>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="flex flex-col">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton href="/" isActive={isActive('/')}>
@@ -86,8 +86,8 @@ export function SidebarNavContent() {
             </SidebarMenuItem>
           </SidebarMenu>
 
-          <div className="mt-auto">
-            <Card className="m-2 shadow-none">
+          <div className="mt-auto flex flex-col gap-4">
+             <Card className="m-2 shadow-none">
                 <CardContent className="p-3">
                     <p className="text-sm text-muted-foreground">Today Generation</p>
                     <div className="flex items-baseline gap-2 mt-1">
@@ -97,7 +97,7 @@ export function SidebarNavContent() {
                 </CardContent>
             </Card>
 
-            <SidebarMenu className="mt-2">
+            <SidebarMenu>
               <p className="px-4 text-sm font-semibold text-muted-foreground">Communities</p>
               <SidebarMenuItem>
                   <SidebarMenuButton href="/community-a" isActive={isActive('/community-a')} className="mt-2">
