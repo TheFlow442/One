@@ -115,7 +115,7 @@ export function SidebarNavContent() {
                 <p className="text-sm text-muted-foreground">Today Generation</p>
                 <div className="flex items-baseline gap-2 mt-1">
                     <Sun className="h-5 w-5 text-yellow-500"/>
-                    <p className="text-2xl font-bold">802.65 <span className="text-lg font-normal text-muted-foreground">kWh</span></p>
+                    <p className="text-2xl font-bold">7.4 <span className="text-lg font-normal text-muted-foreground">kWh</span></p>
                 </div>
             </CardContent>
         </Card>
