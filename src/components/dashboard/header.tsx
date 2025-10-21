@@ -11,9 +11,9 @@ export function Header() {
     <header className="flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 sticky top-0 z-30">
         <div className="md:hidden">
             <SidebarTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost">
                     <PanelLeft />
-                    <span className="sr-only">Toggle Menu</span>
+                    <span className="ml-2">Menu</span>
                 </Button>
             </SidebarTrigger>
         </div>
