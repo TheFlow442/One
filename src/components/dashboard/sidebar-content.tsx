@@ -27,8 +27,8 @@ export function SidebarNavContent() {
 
     const isActive = (path: string) => {
         // The root path should only be active if it's exactly the root.
-        if (path === '/') {
-            return pathname === '/';
+        if (path === '/dashboard') {
+            return pathname === '/dashboard';
         }
         return pathname.startsWith(path);
     }
@@ -37,7 +37,7 @@ export function SidebarNavContent() {
     <>
       <SidebarHeader className="border-b">
         <div className="flex items-center gap-2 p-4">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/dashboard" className="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" className="h-6 w-6">
                     <rect width="256" height="256" fill="none"></rect>
                     <path d="M148,168V200a8,8,0,0,1-16,0V168" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"></path><path d="M196,120H156l12-32-64,72h40l-12,32" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"></path><path d="M104.9,131.1a60,60,0,1,1,26.2-83.3" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"></path>
@@ -49,7 +49,7 @@ export function SidebarNavContent() {
       <SidebarContent className="flex flex-col">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/" isActive={isActive('/')}>
+              <SidebarMenuButton href="/dashboard" isActive={isActive('/dashboard')}>
                 <LayoutGrid />
                 Dashboard
               </SidebarMenuButton>
