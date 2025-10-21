@@ -1,17 +1,52 @@
-
 'use client';
 
-import { useActionState } from 'react';
+import { useState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { signup } from '@/lib/auth-actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
+import { useAuth } from '@/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createSession } from '@/lib/auth-actions';
+import { useRouter } from 'next/navigation';
 
 export default function SignupPage() {
-  const [errorMessage, dispatch] = useActionState(signup, undefined);
+  const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleSubmit = async (formData: FormData) => {
+    setErrorMessage(undefined);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    if (!email || !password) {
+        setErrorMessage('Email and password are required.');
+        return;
+    }
+    if (password.length < 6) {
+        setErrorMessage('Password must be at least 6 characters long.');
+        return;
+    }
+
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const idToken = await userCredential.user.getIdToken();
+        await createSession(idToken);
+        router.push('/dashboard');
+    } catch (error: any) {
+        if (error.code === 'auth/email-already-in-use') {
+            setErrorMessage('This email is already in use.');
+        } else if (error.code === 'auth/weak-password') {
+            setErrorMessage('The password is too weak. Please use at least 6 characters.');
+        } else {
+            console.error('Signup Error:', error);
+            setErrorMessage('An unknown error occurred during sign-up.');
+        }
+    }
+  };
 
   return (
     <main className="flex items-center justify-center min-h-screen bg-background">
@@ -21,7 +56,7 @@ export default function SignupPage() {
           <CardDescription>Create an account to get started.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={dispatch} className="space-y-4">
+          <form action={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

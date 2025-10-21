@@ -1,17 +1,47 @@
-
 'use client';
 
-import { useActionState } from 'react';
+import { useState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { authenticate } from '@/lib/auth-actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
+import { useAuth } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { createSession } from '@/lib/auth-actions';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const [errorMessage, dispatch] = useActionState(authenticate, undefined);
+  const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleSubmit = async (formData: FormData) => {
+    setErrorMessage(undefined);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    if (!email || !password) {
+        setErrorMessage('Email and password are required.');
+        return;
+    }
+
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const idToken = await userCredential.user.getIdToken();
+        await createSession(idToken);
+        router.push('/dashboard');
+    } catch (error: any) {
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            setErrorMessage('Invalid email or password.');
+        } else {
+            console.error('Login Error:', error);
+            setErrorMessage('An unknown error occurred during sign-in.');
+        }
+    }
+  };
+
 
   return (
     <main className="flex items-center justify-center min-h-screen bg-background">
@@ -21,7 +51,7 @@ export default function LoginPage() {
           <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={dispatch} className="space-y-4">
+          <form action={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
