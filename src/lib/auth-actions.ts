@@ -3,13 +3,16 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { initializeApp, getApps } from 'firebase/app';
+import { initializeApp, getApps, FirebaseError } from 'firebase/app';
 
 const SESSION_COOKIE_NAME = 'volta_view_session';
 
-const firebaseConfig = JSON.parse(process.env.NEXT_PUBLIC_FIREBASE_CONFIG!);
+const firebaseConfig = process.env.NEXT_PUBLIC_FIREBASE_CONFIG ? JSON.parse(process.env.NEXT_PUBLIC_FIREBASE_CONFIG) : undefined;
 
 function getFirebaseAuth() {
+  if (!firebaseConfig) {
+    throw new Error("Firebase config is not available. Make sure NEXT_PUBLIC_FIREBASE_CONFIG is set in your environment variables.");
+  }
   if (!getApps().length) {
     initializeApp(firebaseConfig);
   }
@@ -40,13 +43,15 @@ export async function authenticate(
       path: '/',
     });
 
-    redirect('/dashboard');
   } catch (error: any) {
-    if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-      return { message: 'Invalid email or password.' };
+    if (error instanceof FirebaseError) {
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+          return { message: 'Invalid email or password.' };
+        }
     }
     return { message: 'An unknown error occurred.' };
   }
+  redirect('/dashboard');
 }
 
 export async function signup(
@@ -68,14 +73,15 @@ export async function signup(
       path: '/',
     });
     
-    redirect('/dashboard');
-
   } catch (error: any) {
-     if (error.code === 'auth/email-already-in-use') {
-      return { message: 'This email is already in use.' };
-    } else if (error.code === 'auth/weak-password') {
-      return { message: 'The password is too weak. Please use at least 6 characters.'}
+    if (error instanceof FirebaseError) {
+        if (error.code === 'auth/email-already-in-use') {
+            return { message: 'This email is already in use.' };
+        } else if (error.code === 'auth/weak-password') {
+            return { message: 'The password is too weak. Please use at least 6 characters.'}
+        }
     }
     return { message: 'An unknown error occurred during sign-up.' };
   }
+  redirect('/dashboard');
 }
