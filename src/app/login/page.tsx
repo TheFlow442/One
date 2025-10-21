@@ -95,7 +95,7 @@ function LoginButton() {
   const { pending } = useFormStatus();
   const auth = useAuth(); // Check auth status here as well
   return (
-    <Button className="w-full" type="submit" aria-disabled={pending || !auth}>
+    <Button className="w-full" type="submit" aria-disabled={pending || !auth} disabled={pending || !auth}>
       {pending ? 'Signing In...' : 'Sign In'}
     </Button>
   );

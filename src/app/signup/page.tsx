@@ -11,8 +11,8 @@ import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { createSession } from '@/lib/auth-actions';
 import { useRouter } from 'next/navigation';
-import { doc } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, setDoc } from 'firebase/firestore';
+
 
 export default function SignupPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
@@ -22,6 +22,11 @@ export default function SignupPage() {
 
   const handleSubmit = async (formData: FormData) => {
     setErrorMessage(undefined);
+    if (!auth || !firestore) {
+        setErrorMessage('Firebase is not ready. Please wait a moment and try again.');
+        return;
+    }
+
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
@@ -40,7 +45,8 @@ export default function SignupPage() {
 
         // Create user document in Firestore
         const userRef = doc(firestore, 'users', user.uid);
-        setDocumentNonBlocking(userRef, {
+        // Using await here to ensure document is created before session
+        await setDoc(userRef, {
             id: user.uid,
             email: user.email
         }, { merge: true });
@@ -103,8 +109,9 @@ export default function SignupPage() {
 
 function SignUpButton() {
   const { pending } = useFormStatus();
+  const auth = useAuth();
   return (
-    <Button className="w-full" aria-disabled={pending}>
+    <Button className="w-full" type="submit" aria-disabled={pending || !auth} disabled={pending || !auth}>
       {pending ? 'Creating Account...' : 'Sign Up'}
     </Button>
   );
