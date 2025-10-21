@@ -85,18 +85,18 @@ export function SidebarNavContent() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
+          
+          <Card className="m-2 shadow-none">
+              <CardContent className="p-3">
+                  <p className="text-sm text-muted-foreground">Today Generation</p>
+                  <div className="flex items-baseline gap-2 mt-1">
+                      <Sun className="h-5 w-5 text-yellow-500"/>
+                      <p className="text-2xl font-bold">7.4 <span className="text-lg font-normal text-muted-foreground">kWh</span></p>
+                  </div>
+              </CardContent>
+          </Card>
 
           <div className="mt-auto flex flex-col gap-4">
-            <Card className="m-2 shadow-none">
-                <CardContent className="p-3">
-                    <p className="text-sm text-muted-foreground">Today Generation</p>
-                    <div className="flex items-baseline gap-2 mt-1">
-                        <Sun className="h-5 w-5 text-yellow-500"/>
-                        <p className="text-2xl font-bold">7.4 <span className="text-lg font-normal text-muted-foreground">kWh</span></p>
-                    </div>
-                </CardContent>
-            </Card>
-
             <SidebarMenu>
               <p className="px-4 text-sm font-semibold text-muted-foreground">Communities</p>
               <SidebarMenuItem>
