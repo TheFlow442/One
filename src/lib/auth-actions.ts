@@ -9,16 +9,31 @@ const SESSION_COOKIE_NAME = '__session';
 
 function initializeAdmin() {
     if (!admin.apps.length) {
+        // This relies on GOOGLE_APPLICATION_CREDENTIALS environment variable
+        // being set in the App Hosting environment.
         admin.initializeApp({
             credential: admin.credential.applicationDefault(),
         });
     }
 }
 
-export type AuthState = {
-  message?: string | null;
-  success?: boolean;
-};
+export type AuthState = string | undefined;
+
+// This function is insecure and is for demonstration purposes only in a dev environment.
+// It bypasses password checking. In a real app, you would get an ID token from
+// the client, send it to the server, and then create a session cookie.
+async function createSessionForUser(uid: string) {
+    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+    const sessionCookie = await admin.auth().createSessionCookie(uid, { expiresIn });
+
+    cookies().set(SESSION_COOKIE_NAME, sessionCookie, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: expiresIn,
+      path: '/',
+    });
+}
+
 
 export async function authenticate(
   prevState: AuthState | undefined,
@@ -29,30 +44,23 @@ export async function authenticate(
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
-    // The proper way would be a custom auth flow.
-    // For now, we cannot verify password with Admin SDK directly.
-    // We will just create a session cookie if user exists.
     const userRecord = await admin.auth().getUserByEmail(email);
 
-    if (!userRecord) {
-        return { message: 'Invalid email or password.' };
+    // INSECURE: This flow is for demonstration. It doesn't verify the password.
+    // A proper flow would involve the client signing in, getting an ID token,
+    // and sending that to the server.
+    if (userRecord) {
+        await createSessionForUser(userRecord.uid);
+    } else {
+        return 'Invalid email or password.';
     }
-
-    const sessionCookie = await admin.auth().createSessionCookie(userRecord.uid, { expiresIn: 60 * 60 * 24 * 5 * 1000 });
-
-    cookies().set(SESSION_COOKIE_NAME, sessionCookie, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
-      path: '/',
-    });
 
   } catch (error: any) {
     if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        return { message: 'Invalid email or password.' };
+        return 'Invalid email or password.';
     }
     console.error('Authentication Error:', error);
-    return { message: 'An unknown error occurred during sign-in.' };
+    return 'An unknown error occurred during sign-in.';
   }
   redirect('/');
 }
@@ -70,24 +78,17 @@ export async function signup(
         email: email,
         password: password,
     });
-
-    const sessionCookie = await admin.auth().createSessionCookie(userRecord.uid, { expiresIn: 60 * 60 * 24 * 5 * 1000 });
-
-    cookies().set(SESSION_COOKIE_NAME, sessionCookie, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
-      path: '/',
-    });
+    
+    await createSessionForUser(userRecord.uid);
     
   } catch (error: any) {
     if (error.code === 'auth/email-already-exists') {
-        return { message: 'This email is already in use.' };
-    } else if (error.code === 'auth/invalid-password') {
-        return { message: 'The password is too weak. Please use at least 6 characters.'}
+        return 'This email is already in use.';
+    } else if (error.code === 'auth/weak-password') {
+        return 'The password is too weak. Please use at least 6 characters.';
     }
     console.error('Signup Error:', error);
-    return { message: 'An unknown error occurred during sign-up.' };
+    return 'An unknown error occurred during sign-up.';
   }
   redirect('/');
 }

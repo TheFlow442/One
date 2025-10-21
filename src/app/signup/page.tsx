@@ -37,7 +37,7 @@ export default function SignupPage() {
             </div>
             {errorMessage && (
               <div className="text-sm text-red-500">
-                {errorMessage.message}
+                {errorMessage}
               </div>
             )}
             <SignUpButton />
