@@ -33,15 +33,14 @@ export default function DashboardPage() {
 
   const esp32DataRef = useMemoFirebase(() => {
     if (!firestore) return null;
-    // For testing with open rules, we don't need a user.
-    // In a production app, you'd re-introduce the !user check.
-    return doc(firestore, `users/user_123/esp32_data/live_data`);
+    // Reading from a top-level collection for public access during testing.
+    return doc(firestore, `esp32_live_data/live_data`);
   }, [firestore]);
 
 
   const { data: esp32Data, isLoading: isEsp32DataLoading } = useDoc(esp32DataRef);
 
-  const isLoading = isUserLoading || isEsp32DataLoading;
+  const isLoading = isEsp32DataLoading;
 
   const voltage = esp32Data?.voltage;
   const current = esp32Data?.current;
@@ -247,5 +246,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

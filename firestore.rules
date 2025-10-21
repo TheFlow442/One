@@ -2,64 +2,92 @@
  * @fileoverview Firestore Security Rules for VoltaView Auth.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles and associated ESP32 data. Only the authenticated user can read and write their own profile data. ESP32 Data can only be written by the esp32.
+ * This ruleset enforces a strict user-ownership model for both user profiles and ESP32 data.
+ * Users can only read and write their own data.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile information, with 'userId' matching the Firebase Auth UID.
- * - /users/{userId}/esp32_data/{esp32DataId}: Stores ESP32 sensor data, accessible only by the esp32.
+ * - User profiles are stored in `/users/{userId}`.
+ * - ESP32 data associated with users is stored in `/users/{userId}/esp32_data/{esp32DataId}`.
  *
  * Key Security Decisions:
- * - Users cannot list all user profiles.
- * - ESP32 data is private to each user.
+ * - Users can only create their own profile.
+ * - Users can only access their own ESP32 data.
+ * - Listing all users is disallowed to protect privacy.
+ * - Listing ESP32 data is only allowed for the owner.
  *
  * Denormalization for Authorization:
- * - The 'userId' is present in both the /users/{userId} path and as a field within the /users/{userId}/esp32_data/{esp32DataId} documents, enabling direct authorization checks without additional reads.
+ * - The `userId` is present in both the user profile document ID and the ESP32 data documents to ensure the path is the single source of truth for authorization.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Protects user profiles. Only the authenticated user can read or write their own profile.
+     * @description Manages user profile data.
      * @path /users/{userId}
-     * @allow (create) User with UID 'user_abc' can create their profile at /users/user_abc if the document's 'id' field also equals 'user_abc'.
-     * @deny (create) User with UID 'user_abc' cannot create a profile at /users/user_xyz.
-     * @allow (get, update, delete) User with UID 'user_abc' can access their profile at /users/user_abc.
-     * @deny (get, update, delete) User with UID 'user_abc' cannot access the profile at /users/user_xyz.
-     * @principle Enforces document ownership for all operations on user profiles.
+     * @allow (create) Authenticated user can create their own profile.
+     * @allow (get) Authenticated user can read their own profile.
+     * @allow (update) Authenticated user can update their own profile.
+     * @allow (delete) Authenticated user can delete their own profile.
+     * @deny (create) Unauthenticated user cannot create a profile.
+     * @deny (create) Authenticated user cannot create a profile with a different user ID.
+     * @principle Enforces user-ownership; only the authenticated user can manage their profile.
      */
     match /users/{userId} {
+      // Check if the user is signed in
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      // Check if the authenticated user ID matches the requested user ID
       function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
+        return request.auth.uid == userId;
+      }
+
+      // Check if the authenticated user ID matches the requested user ID and that the document exists
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
       }
 
       allow get: if isOwner(userId);
       allow list: if false;
-
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && resource.data.id == request.resource.data.id;
-      allow delete: if isOwner(userId) && resource != null;
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Secures ESP32 data under a user's profile.  Writes allowed only by esp32.
+     * @description Manages ESP32 data for a specific user.
      * @path /users/{userId}/esp32_data/{esp32DataId}
-     * @allow (create) ESP32 can create data.
-     * @deny (create) User with UID 'user_abc' cannot create esp32 data at /users/user_abc/esp32_data/esp32_1.
-     * @allow (get, list) User with UID 'user_abc' can read esp32 data at /users/user_abc/esp32_data/esp32_1.
-     * @deny (get, list) User with UID 'user_abc' cannot read esp32 data at /users/user_xyz/esp32_data/esp32_1.
-     * @deny (update, delete) No one can update or delete esp32 data
-     * @principle Restricts access to ESP32 data to the owner and prevents modifications.
+     * @allow (create) Authenticated user can create ESP32 data under their user ID.
+     * @allow (get) Authenticated user can read ESP32 data under their user ID.
+     * @allow (update) Authenticated user can update ESP32 data under their user ID.
+     * @allow (delete) Authenticated user can delete ESP32 data under their user ID.
+     * @deny (create) Unauthenticated user cannot create ESP32 data.
+     * @deny (create) Authenticated user cannot create ESP32 data under a different user ID.
+     * @principle Enforces user-ownership; only the authenticated user can manage their ESP32 data.
      */
     match /users/{userId}/esp32_data/{esp32DataId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
+      // Check if the user is signed in
+      function isSignedIn() {
+        return request.auth != null;
       }
 
-      allow get, list: if isOwner(userId);
-      allow create: if true;
-      allow update: if false;
-      allow delete: if false;
+      // Check if the authenticated user ID matches the requested user ID
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      // Check if the authenticated user ID matches the requested user ID and that the document exists
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
     }
   }
 }
