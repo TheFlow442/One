@@ -6,7 +6,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarFooter
 } from "@/components/ui/sidebar";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -47,8 +46,7 @@ export function SidebarNavContent() {
             </Link>
         </div>
       </SidebarHeader>
-      <SidebarContent className="flex-1 flex flex-col justify-between">
-        <div>
+      <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton href="/" isActive={isActive('/')}>
@@ -88,44 +86,40 @@ export function SidebarNavContent() {
             </SidebarMenuItem>
           </SidebarMenu>
 
-          <SidebarMenu className="mt-4">
-            <p className="px-4 text-sm font-semibold text-muted-foreground">Communities</p>
-            <SidebarMenuItem>
-                <SidebarMenuButton href="/community-a" isActive={isActive('/community-a')} className="mt-2">
-                    <Users />
-                    Community A
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton href="/community-b" isActive={isActive('/community-b')}>
-                    <Users />
-                    Community B
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton href="/community-c" isActive={isActive('/community-c')}>
-                    <Users />
-                    Community C
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </div>
+          <div className="mt-auto">
+            <Card className="m-2 shadow-none">
+                <CardContent className="p-3">
+                    <p className="text-sm text-muted-foreground">Today Generation</p>
+                    <div className="flex items-baseline gap-2 mt-1">
+                        <Sun className="h-5 w-5 text-yellow-500"/>
+                        <p className="text-2xl font-bold">7.4 <span className="text-lg font-normal text-muted-foreground">kWh</span></p>
+                    </div>
+                </CardContent>
+            </Card>
 
-        <div>
-          <Card className="m-2 shadow-none">
-              <CardContent className="p-3">
-                  <p className="text-sm text-muted-foreground">Today Generation</p>
-                  <div className="flex items-baseline gap-2 mt-1">
-                      <Sun className="h-5 w-5 text-yellow-500"/>
-                      <p className="text-2xl font-bold">7.4 <span className="text-lg font-normal text-muted-foreground">kWh</span></p>
-                  </div>
-              </CardContent>
-          </Card>
-        </div>
-
+            <SidebarMenu className="mt-2">
+              <p className="px-4 text-sm font-semibold text-muted-foreground">Communities</p>
+              <SidebarMenuItem>
+                  <SidebarMenuButton href="/community-a" isActive={isActive('/community-a')} className="mt-2">
+                      <Users />
+                      Community A
+                  </SidebarMenuButton>
+              </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton href="/community-b" isActive={isActive('/community-b')}>
+                      <Users />
+                      Community B
+                  </SidebarMenuButton>
+              </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton href="/community-c" isActive={isActive('/community-c')}>
+                      <Users />
+                      Community C
+                  </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </div>
       </SidebarContent>
-      <SidebarFooter>
-      </SidebarFooter>
     </>
   );
 }
