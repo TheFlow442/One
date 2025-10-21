@@ -9,7 +9,7 @@ export default function DashboardLayout({
 }) {
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar collapsible="none">
         <SidebarNavContent />
       </Sidebar>
       <SidebarInset>
