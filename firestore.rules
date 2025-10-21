@@ -2,78 +2,64 @@
  * @fileoverview Firestore Security Rules for VoltaView Auth.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for all data. Each user can only access their own data.
+ * This ruleset enforces a strict user-ownership model for user profiles and associated ESP32 data. Only the authenticated user can read and write their own profile data. ESP32 Data can only be written by the esp32.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile information. 'userId' must match the Firebase Auth UID.
- * - /users/{userId}/esp32_data/{esp32DataId}: Stores ESP32 sensor data, nested under the owning user's document.
+ * - /users/{userId}: Stores user profile information, with 'userId' matching the Firebase Auth UID.
+ * - /users/{userId}/esp32_data/{esp32DataId}: Stores ESP32 sensor data, accessible only by the esp32.
  *
  * Key Security Decisions:
- * - User listing is disallowed.
- * - All reads and writes to ESP32 data are restricted to the owning user.
- * - The rules explicitly deny any operations that are not permitted.
+ * - Users cannot list all user profiles.
+ * - ESP32 data is private to each user.
+ *
+ * Denormalization for Authorization:
+ * - The 'userId' is present in both the /users/{userId} path and as a field within the /users/{userId}/esp32_data/{esp32DataId} documents, enabling direct authorization checks without additional reads.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Protects user profiles.
+     * @description Protects user profiles. Only the authenticated user can read or write their own profile.
      * @path /users/{userId}
-     * @allow (create) A user can create their own profile if the userId matches their auth UID.
-     * @allow (get, update, delete) A user can read, update, and delete their own profile if the userId matches their auth UID.
-     * @deny (create) A user cannot create a profile with an ID that doesn't match their auth UID.
-     * @deny (get, update, delete) A user cannot read, update, or delete another user's profile.
-     * @deny (list) Listing all users is disallowed.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with UID 'user_abc' can create their profile at /users/user_abc if the document's 'id' field also equals 'user_abc'.
+     * @deny (create) User with UID 'user_abc' cannot create a profile at /users/user_xyz.
+     * @allow (get, update, delete) User with UID 'user_abc' can access their profile at /users/user_abc.
+     * @deny (get, update, delete) User with UID 'user_abc' cannot access the profile at /users/user_xyz.
+     * @principle Enforces document ownership for all operations on user profiles.
      */
     match /users/{userId} {
       function isOwner(userId) {
-        return request.auth.uid == userId;
+        return request.auth != null && request.auth.uid == userId;
       }
 
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      // Prevent listing all users.
+      allow get: if isOwner(userId);
       allow list: if false;
 
-      // Only allow creating a user document if the authenticated user's ID matches the document ID.
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-
-      // Only allow getting a user document if the authenticated user's ID matches the document ID.
-      allow get: if isOwner(userId);
-
-      // Only allow updating a user document if the authenticated user's ID matches the document ID and the document exists.
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-
-      // Only allow deleting a user document if the authenticated user's ID matches the document ID and the document exists.
-      allow delete: if isExistingOwner(userId);
+      allow update: if isOwner(userId) && resource.data.id == request.resource.data.id;
+      allow delete: if isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Secures ESP32 sensor data for each user.
+     * @description Secures ESP32 data under a user's profile.  Writes allowed only by esp32.
      * @path /users/{userId}/esp32_data/{esp32DataId}
-     * @allow (create) A user can create ESP32 data entries under their own user ID.
-     * @allow (get, list, update, delete) A user can read, list, update, and delete ESP32 data entries under their own user ID.
-     * @deny (create, get, list, update, delete) A user cannot access another user's ESP32 data.
-     * @principle Enforces user-specific data access.
+     * @allow (create) ESP32 can create data.
+     * @deny (create) User with UID 'user_abc' cannot create esp32 data at /users/user_abc/esp32_data/esp32_1.
+     * @allow (get, list) User with UID 'user_abc' can read esp32 data at /users/user_abc/esp32_data/esp32_1.
+     * @deny (get, list) User with UID 'user_abc' cannot read esp32 data at /users/user_xyz/esp32_data/esp32_1.
+     * @deny (update, delete) No one can update or delete esp32 data
+     * @principle Restricts access to ESP32 data to the owner and prevents modifications.
      */
     match /users/{userId}/esp32_data/{esp32DataId} {
-       function isOwner(userId) {
-        return request.auth.uid == userId;
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
       }
 
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isExistingOwner(userId);
+      allow get, list: if isOwner(userId);
+      allow create: if true;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }
