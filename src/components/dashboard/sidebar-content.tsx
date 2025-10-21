@@ -87,7 +87,7 @@ export function SidebarNavContent() {
           </SidebarMenu>
 
           <div className="mt-auto flex flex-col gap-4">
-             <Card className="m-2 shadow-none">
+            <Card className="m-2 shadow-none">
                 <CardContent className="p-3">
                     <p className="text-sm text-muted-foreground">Today Generation</p>
                     <div className="flex items-baseline gap-2 mt-1">
