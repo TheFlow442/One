@@ -8,23 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { useAuth, useUser, useFirebase } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { createSession } from '@/lib/auth-actions';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
-  const auth = useAuth();
+  const { auth } = useFirebase();
   const router = useRouter();
 
   const handleSubmit = async (formData: FormData) => {
     setErrorMessage(undefined);
-
-    if (!auth) {
-        setErrorMessage('Authentication service is not available. Please try again later.');
-        return;
-    }
 
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -32,6 +27,11 @@ export default function LoginPage() {
     if (!email || !password) {
         setErrorMessage('Email and password are required.');
         return;
+    }
+    
+    if (!auth) {
+      setErrorMessage('Authentication service is not ready, please wait a moment and try again.');
+      return;
     }
 
     try {
@@ -105,5 +105,3 @@ function LoginButton() {
     </Button>
   );
 }
-
-    

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { useAuth, useFirestore, useUser, useFirebase } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { createSession } from '@/lib/auth-actions';
 import { useRouter } from 'next/navigation';
@@ -17,17 +17,11 @@ import { doc, setDoc } from 'firebase/firestore';
 
 export default function SignupPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const { auth, firestore } = useFirebase();
   const router = useRouter();
 
   const handleSubmit = async (formData: FormData) => {
     setErrorMessage(undefined);
-
-    if (!auth || !firestore) {
-        setErrorMessage('Authentication service is not available. Please try again later.');
-        return;
-    }
 
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -39,6 +33,11 @@ export default function SignupPage() {
     if (password.length < 6) {
         setErrorMessage('Password must be at least 6 characters long.');
         return;
+    }
+    
+    if (!auth || !firestore) {
+      setErrorMessage('Authentication service is not ready, please wait a moment and try again.');
+      return;
     }
 
     try {
@@ -120,5 +119,3 @@ function SignUpButton() {
     </Button>
   );
 }
-
-    
