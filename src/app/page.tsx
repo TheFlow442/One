@@ -31,12 +31,14 @@ export default function DashboardPage() {
   const [voltage, setVoltage] = useState(0);
   const [current, setCurrent] = useState(0);
   const [temperature, setTemperature] = useState(0);
+  const [irradiance, setIrradiance] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setVoltage(230 + Math.random() * 5);
       setCurrent(4 + Math.random() * 1.5);
       setTemperature(35 + Math.random() * 10);
+      setIrradiance(600 + Math.random() * 200);
     }, 4000);
 
     return () => clearInterval(interval);
@@ -148,7 +150,7 @@ export default function DashboardPage() {
             <Sun className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             <div className="text-2xl font-bold">0 <span className="text-base font-normal">W/m²</span></div>
+             <div className="text-2xl font-bold">{irradiance.toFixed(0)} <span className="text-base font-normal">W/m²</span></div>
             <p className="text-xs text-muted-foreground">Insolation level</p>
           </CardContent>
         </Card>
