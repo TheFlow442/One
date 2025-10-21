@@ -1,7 +1,7 @@
 'use client';
 
 import { useFormState, useFormStatus } from 'react-dom';
-import { signup } from '@/lib/actions';
+import { signup } from '@/lib/auth-actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { UserPlus, AtSign, KeyRound } from 'lucide-react';
 import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { redirect } from 'next/navigation';
 
 export function SignupForm() {
   const [state, dispatch] = useFormState(signup, undefined);
@@ -22,9 +21,6 @@ export function SignupForm() {
         title: state.success ? "Success!" : "Sign-up Failed",
         description: state.message,
       });
-    }
-    if(state?.success) {
-      // No need to redirect here, the server action will do it.
     }
   }, [state]);
 
