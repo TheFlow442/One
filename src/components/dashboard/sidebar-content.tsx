@@ -5,24 +5,21 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarFooter,
-  SidebarSeparator,
-  SidebarGroup,
-  SidebarGroupLabel,
+  SidebarFooter
 } from "@/components/ui/sidebar";
+import { Card, CardContent } from "@/components/ui/card";
+
 import {
   LayoutGrid,
   Cpu,
   FileText,
   AlertTriangle,
   Settings,
-  History,
   Users,
-  BoltIcon,
-  LogOutIcon
+  Sun,
+  Home
 } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { Button } from "../ui/button";
 
 export function SidebarNavContent() {
     const pathname = usePathname();
@@ -38,9 +35,9 @@ export function SidebarNavContent() {
   return (
     <>
       <SidebarHeader className="border-b">
-        <div className="flex items-center gap-2 p-2">
-            <BoltIcon className="h-6 w-6 text-primary"/>
-            <h1 className="text-xl font-bold">VoltaView</h1>
+        <div className="flex items-center gap-2 p-4">
+            <Home className="h-6 w-6"/>
+            <h1 className="text-xl font-bold">Smart Solar Microgrid</h1>
         </div>
       </SidebarHeader>
       <SidebarContent className="flex-1">
@@ -52,69 +49,64 @@ export function SidebarNavContent() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton href="#" isActive={isActive('/systems')}>
+            <SidebarMenuButton href="/systems" isActive={isActive('/systems')}>
               <Cpu />
               Systems
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton href="#" isActive={isActive('/reports')}>
+            <SidebarMenuButton href="/reports" isActive={isActive('/reports')}>
               <FileText />
               Reports
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton href="#" isActive={isActive('/alerts')}>
+            <SidebarMenuButton href="/alerts" isActive={isActive('/alerts')}>
               <AlertTriangle />
               Alerts
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton href="#" isActive={isActive('/settings')}>
+            <SidebarMenuButton href="/settings" isActive={isActive('/settings')}>
               <Settings />
               Settings
             </SidebarMenuButton>
           </SidebarMenuItem>
-           <SidebarMenuItem>
-            <SidebarMenuButton href="#" isActive={isActive('/history')}>
-              <History />
-              History
-            </SidebarMenuButton>
+        </SidebarMenu>
+
+        <SidebarMenu className="mt-4">
+          <p className="px-4 text-sm font-semibold text-muted-foreground">Communities</p>
+          <SidebarMenuItem>
+              <SidebarMenuButton href="#" isActive={isActive('/community-a')} className="mt-2">
+                  <Users />
+                  Community A
+              </SidebarMenuButton>
+          </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton href="#" isActive={isActive('/community-b')}>
+                  <Users />
+                  Community B
+              </SidebarMenuButton>
+          </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton href="#" isActive={isActive('/community-c')}>
+                  <Users />
+                  Community C
+              </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
 
-        <SidebarSeparator />
-
-        <SidebarGroup>
-            <SidebarGroupLabel>Communities</SidebarGroupLabel>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <SidebarMenuButton href="#" isActive={isActive('/community-a')}>
-                        <Users />
-                        Community A
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                 <SidebarMenuItem>
-                    <SidebarMenuButton href="#" isActive={isActive('/community-b')}>
-                        <Users />
-                        Community B
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                 <SidebarMenuItem>
-                    <SidebarMenuButton href="#" isActive={isActive('/community-c')}>
-                        <Users />
-                        Community C
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </SidebarGroup>
-
       </SidebarContent>
       <SidebarFooter>
-        <Button variant="outline" className="w-full" disabled>
-          <LogOutIcon className="mr-2 h-4 w-4" />
-          Sign Out
-        </Button>
+        <Card className="m-2 shadow-none">
+            <CardContent className="p-3">
+                <p className="text-sm text-muted-foreground">Today Generation</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                    <Sun className="h-5 w-5 text-yellow-500"/>
+                    <p className="text-2xl font-bold">876 <span className="text-lg font-normal text-muted-foreground">kWh</span></p>
+                </div>
+            </CardContent>
+        </Card>
       </SidebarFooter>
     </>
   );
