@@ -6,8 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { CommunityEnergyTrendChart } from '@/components
-/dashboard/community-energy-trend-chart';
+import { CommunityEnergyTrendChart } from '@/components/dashboard/community-energy-trend-chart';
 import { Users } from 'lucide-react';
 
 export default function CommunityCPage() {
