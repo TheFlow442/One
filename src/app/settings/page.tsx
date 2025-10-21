@@ -1,4 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ThemeSwitcher } from '@/components/settings/theme-switcher';
 
 export default function SettingsPage() {
   return (
@@ -6,9 +7,10 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Settings</CardTitle>
+          <CardDescription>Manage your app settings.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p>This is a placeholder for the Settings page.</p>
+          <ThemeSwitcher />
         </CardContent>
       </Card>
     </div>
