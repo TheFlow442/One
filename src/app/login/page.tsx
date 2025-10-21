@@ -35,6 +35,8 @@ export default function LoginPage() {
     } catch (error: any) {
         if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
             setErrorMessage('Invalid email or password.');
+        } else if (error.code === 'auth/operation-not-allowed') {
+            setErrorMessage('Sign-in with email and password is not enabled for this project. Please enable it in the Firebase console.');
         } else {
             console.error('Login Error:', error);
             setErrorMessage('An unknown error occurred during sign-in.');
