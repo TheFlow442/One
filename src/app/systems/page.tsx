@@ -1,6 +1,8 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Sun, BatteryCharging, Gauge, Activity, TowerControl, Layers } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function SystemsPage() {
   const systems = [
@@ -51,7 +53,12 @@ export default function SystemsPage() {
                 {system.icon}
                 <CardTitle className="text-lg font-medium">{system.name}</CardTitle>
               </div>
-              <Badge variant={system.status === 'charging' ? 'warning' : 'success'}>
+              <Badge
+                className={cn({
+                  'bg-green-500/20 text-green-400 border-transparent': system.status === 'online',
+                  'bg-yellow-500/20 text-yellow-400 border-transparent': system.status === 'charging',
+                })}
+              >
                 {system.status}
               </Badge>
             </div>
