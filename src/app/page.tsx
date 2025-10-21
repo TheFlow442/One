@@ -62,9 +62,12 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Smart Solar Microgrid Management</h1>
-          <p className="text-muted-foreground">Monitor your solar system in real-time</p>
+        <div className="flex items-center gap-3">
+          <Zap className="h-8 w-8" />
+          <div>
+            <h1 className="text-3xl font-bold">Smart Solar Microgrid Management</h1>
+            <p className="text-muted-foreground">Monitor your solar system in real-time</p>
+          </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="relative">
@@ -244,5 +247,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
