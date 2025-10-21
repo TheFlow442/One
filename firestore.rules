@@ -1,0 +1,103 @@
+/**
+ * @fileoverview Firestore Security Rules for VoltaView Auth.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for both user profiles and ESP32 data.
+ * Users can only read and write their own data.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profile information.
+ * - /users/{userId}/esp32_data/{esp32DataId}: Stores ESP32 sensor data associated with a specific user.
+ *
+ * Key Security Decisions:
+ * - Users can only create their own user profile.  Updates are allowed to support profile changes.
+ * - Users can only read and write ESP32 data associated with their own user ID.
+ * - Listing other users is not allowed.
+ *
+ * Denormalization for Authorization:
+ * - The 'userId' is present both in the path for 'esp32_data' and as a field in the 'Esp32Data' documents.
+ *   This redundancy allows for efficient security rules without additional `get()` operations.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Enforces user-ownership for user profiles.  Users can create, read, update, and delete their own profile data.
+     * @path /users/{userId}
+     * @allow (create) User with ID 'user_abc' creates their own profile.
+     *   - request.auth.uid: 'user_abc'
+     *   - request.resource.data.id: 'user_abc'
+     * @allow (get) User with ID 'user_abc' reads their own profile.
+     *   - request.auth.uid: 'user_abc'
+     * @allow (update) User with ID 'user_abc' updates their own profile.
+     *   - request.auth.uid: 'user_abc'
+     * @allow (delete) User with ID 'user_abc' deletes their own profile.
+     *   - request.auth.uid: 'user_abc'
+     * @deny (create) User with ID 'user_abc' attempts to create a profile for 'user_xyz'.
+     *   - request.auth.uid: 'user_abc'
+     *   - request.resource.data.id: 'user_xyz'
+     * @deny (get) User with ID 'user_abc' attempts to read profile of 'user_xyz'.
+     *   - request.auth.uid: 'user_abc'
+     * @principle Enforces document ownership for writes and prevents unauthorized access to user profiles.
+     */
+    match /users/{userId} {
+      // Helper function to check if the authenticated user is the owner of the document.
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      // Helper function to check if the authenticated user is the owner of the existing document.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      // Read rules:
+      allow get: if isOwner(userId);
+      allow list: if false; // Prevent listing of all users.
+
+      // Write rules:
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Enforces user-ownership for ESP32 data. Users can only read and write data associated with their own user ID.
+     * @path /users/{userId}/esp32_data/{esp32DataId}
+     * @allow (create) User with ID 'user_abc' creates ESP32 data under their profile.
+     *   - request.auth.uid: 'user_abc'
+     *   - request.resource.data.userId: 'user_abc'
+     * @allow (get) User with ID 'user_abc' reads ESP32 data under their profile.
+     *   - request.auth.uid: 'user_abc'
+     * @allow (update) User with ID 'user_abc' updates ESP32 data under their profile.
+     *   - request.auth.uid: 'user_abc'
+     * @allow (delete) User with ID 'user_abc' deletes ESP32 data under their profile.
+     *   - request.auth.uid: 'user_abc'
+     * @deny (create) User with ID 'user_abc' attempts to create ESP32 data under 'user_xyz''s profile.
+     *   - request.auth.uid: 'user_abc'
+     *   - request.resource.data.userId: 'user_xyz'
+     * @deny (get) User with ID 'user_abc' attempts to read ESP32 data under 'user_xyz's profile.
+     *   - request.auth.uid: 'user_abc'
+     * @principle Enforces document ownership for writes and prevents unauthorized access to ESP32 data.  Validates relational integrity.
+     */
+    match /users/{userId}/esp32_data/{esp32DataId} {
+      // Helper function to check if the authenticated user is the owner of the document.
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+     // Helper function to check if the authenticated user is the owner of the existing document.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      // Read rules:
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+
+      // Write rules:
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}

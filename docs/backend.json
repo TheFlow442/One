@@ -1,0 +1,103 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the VoltaView Auth application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
+    },
+    "Esp32Data": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Esp32Data",
+      "type": "object",
+      "description": "Represents data received from an ESP32 device.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Esp32Data entry."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns this data. (Relationship: User 1:N Esp32Data)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the data was received.",
+          "format": "date-time"
+        },
+        "sensorValue": {
+          "type": "number",
+          "description": "The sensor reading from the ESP32 device."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "timestamp",
+        "sensorValue"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. The 'userId' parameter is the Firebase Auth UID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user, corresponding to their Firebase Auth UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/esp32_data/{esp32DataId}",
+        "definition": {
+          "entityName": "Esp32Data",
+          "schema": {
+            "$ref": "#/backend/entities/Esp32Data"
+          },
+          "description": "Stores ESP32 data associated with a specific user. The 'userId' in the path ensures only the user can access their own data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user who owns the ESP32 data."
+            },
+            {
+              "name": "esp32DataId",
+              "description": "The unique identifier for the ESP32 data entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to ensure authorization independence, clarity, and scalability. User data is stored under `/users/{userId}`.  ESP32 data is stored under `/users/{userId}/esp32_data/{esp32DataId}`. This structure maintains a clear ownership model.  Authorization independence is achieved because access to the `esp32_data` subcollection is solely dependent on the `userId` in the path, eliminating the need for `get()` calls to parent documents.  This approach fully supports the required QAPs, making list operations secure and efficient, as access control can be enforced directly on the path."
+  }
+}
