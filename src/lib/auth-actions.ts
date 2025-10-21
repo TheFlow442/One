@@ -7,14 +7,17 @@ import * as admin from 'firebase-admin';
 
 const SESSION_COOKIE_NAME = '__session';
 
+// Helper function to initialize Firebase Admin SDK safely.
 function initializeAdmin() {
-    if (!admin.apps.length) {
-        // This relies on GOOGLE_APPLICATION_CREDENTIALS environment variable
-        // being set in the App Hosting environment.
-        admin.initializeApp({
-            credential: admin.credential.applicationDefault(),
-        });
+  if (!admin.apps.length) {
+    try {
+      admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
+      });
+    } catch (e) {
+      console.error('Firebase Admin initialization error:', e);
     }
+  }
 }
 
 export type AuthState = string | undefined;
@@ -23,6 +26,7 @@ export type AuthState = string | undefined;
 // It bypasses password checking. In a real app, you would get an ID token from
 // the client, send it to the server, and then create a session cookie.
 async function createSessionForUser(uid: string) {
+    initializeAdmin();
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     const sessionCookie = await admin.auth().createSessionCookie(uid, { expiresIn });
 
@@ -62,7 +66,7 @@ export async function authenticate(
     console.error('Authentication Error:', error);
     return 'An unknown error occurred during sign-in.';
   }
-  redirect('/');
+  redirect('/dashboard');
 }
 
 export async function signup(
@@ -90,5 +94,5 @@ export async function signup(
     console.error('Signup Error:', error);
     return 'An unknown error occurred during sign-up.';
   }
-  redirect('/');
+  redirect('/dashboard');
 }
