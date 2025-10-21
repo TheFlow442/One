@@ -6,6 +6,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -18,9 +19,12 @@ import {
   Users,
   Sun,
   History,
+  LogOut,
 } from "lucide-react";
 import Link from 'next/link';
 import { usePathname } from "next/navigation";
+import { Button } from "../ui/button";
+import { logout } from "@/lib/actions";
 
 export function SidebarNavContent() {
     const pathname = usePathname();
@@ -120,6 +124,14 @@ export function SidebarNavContent() {
             </SidebarMenu>
           </div>
       </SidebarContent>
+        <SidebarFooter>
+            <form action={logout}>
+                <Button variant="ghost" className="w-full justify-start">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                </Button>
+            </form>
+      </SidebarFooter>
     </>
   );
 }

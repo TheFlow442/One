@@ -15,11 +15,16 @@ import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
-  const { auth } = useFirebase();
+  const { auth, areServicesLoading } = useFirebase();
   const router = useRouter();
 
   const handleSubmit = async (formData: FormData) => {
     setErrorMessage(undefined);
+
+    if (areServicesLoading) {
+      setErrorMessage('Authentication service is not ready, please wait a moment and try again.');
+      return;
+    }
 
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -29,11 +34,6 @@ export default function LoginPage() {
         return;
     }
     
-    if (!auth) {
-      setErrorMessage('Authentication service is not ready, please wait a moment and try again.');
-      return;
-    }
-
     try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const idToken = await userCredential.user.getIdToken();

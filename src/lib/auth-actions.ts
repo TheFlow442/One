@@ -1,8 +1,8 @@
-
 'use server';
 
 import { cookies } from 'next/headers';
 import * as admin from 'firebase-admin';
+import { redirect } from 'next/navigation';
 
 const SESSION_COOKIE_NAME = '__session';
 
@@ -30,10 +30,9 @@ export async function createSession(idToken: string) {
       maxAge: expiresIn,
       path: '/',
     });
+    
   } catch (error) {
     console.error('Failed to create session cookie:', error);
-    // Re-throw or handle the error as needed. For now, we'll just log it.
-    // In a real app, you might want to return an error response.
     throw new Error('Session creation failed');
   }
 }
