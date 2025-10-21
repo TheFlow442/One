@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { useAuth, useFirestore } from '@/firebase';
+import { useAuth, useFirestore, useUser } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { createSession } from '@/lib/auth-actions';
 import { useRouter } from 'next/navigation';
@@ -22,10 +22,6 @@ export default function SignupPage() {
 
   const handleSubmit = async (formData: FormData) => {
     setErrorMessage(undefined);
-    if (!auth || !firestore) {
-        setErrorMessage('Firebase is not ready. Please wait a moment and try again.');
-        return;
-    }
 
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -45,7 +41,6 @@ export default function SignupPage() {
 
         // Create user document in Firestore
         const userRef = doc(firestore, 'users', user.uid);
-        // Using await here to ensure document is created before session
         await setDoc(userRef, {
             id: user.uid,
             email: user.email
@@ -109,9 +104,9 @@ export default function SignupPage() {
 
 function SignUpButton() {
   const { pending } = useFormStatus();
-  const auth = useAuth();
+  const { isUserLoading } = useUser();
   return (
-    <Button className="w-full" type="submit" aria-disabled={pending || !auth} disabled={pending || !auth}>
+    <Button className="w-full" type="submit" aria-disabled={pending || isUserLoading} disabled={pending || isUserLoading}>
       {pending ? 'Creating Account...' : 'Sign Up'}
     </Button>
   );

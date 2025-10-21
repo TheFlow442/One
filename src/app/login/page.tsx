@@ -7,22 +7,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { useAuth } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { createSession } from '@/lib/auth-actions';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
-  const auth = useAuth(); // This can be null initially
+  const auth = useAuth();
+  const { isUserLoading } = useUser();
   const router = useRouter();
 
   const handleSubmit = async (formData: FormData) => {
     setErrorMessage(undefined);
-    if (!auth) {
-        setErrorMessage('Firebase is not ready. Please wait a moment and try again.');
-        return;
-    }
 
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -93,9 +90,9 @@ export default function LoginPage() {
 
 function LoginButton() {
   const { pending } = useFormStatus();
-  const auth = useAuth(); // Check auth status here as well
+  const { isUserLoading } = useUser();
   return (
-    <Button className="w-full" type="submit" aria-disabled={pending || !auth} disabled={pending || !auth}>
+    <Button className="w-full" type="submit" aria-disabled={pending || isUserLoading} disabled={pending || isUserLoading}>
       {pending ? 'Signing In...' : 'Sign In'}
     </Button>
   );

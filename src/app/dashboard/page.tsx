@@ -32,7 +32,8 @@ export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
 
   const esp32DataRef = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
+    if (!user) return null;
+    // Firestore is guaranteed to be available by the hook
     return doc(firestore, `users/${user.uid}/esp32_data/live_data`);
   }, [firestore, user]);
 
