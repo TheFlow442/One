@@ -6,7 +6,7 @@ import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'VoltaView Auth',
+  title: 'VoltaView',
   description: 'Authentication for VoltaView',
 };
 
