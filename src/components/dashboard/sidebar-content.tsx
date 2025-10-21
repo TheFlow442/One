@@ -99,7 +99,7 @@ export function SidebarNavContent() {
                         <Users />
                         Community B
                     </SidebarMenuButton>
-                </MenuItem>
+                </SidebarMenuItem>
                  <SidebarMenuItem>
                     <SidebarMenuButton href="#" isActive={isActive('/community-c')}>
                         <Users />
