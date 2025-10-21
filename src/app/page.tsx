@@ -40,23 +40,17 @@ export default function DashboardPage() {
 
   const { data: esp32Data, isLoading: isEsp32DataLoading } = useDoc(esp32DataRef);
 
-  const isLoading = isEsp32DataLoading || isUserLoading;
-
+  // Safely derive values only when data is available
   const voltage = esp32Data?.voltage ?? 0;
   const current = esp32Data?.current ?? 0;
   const temperature = esp32Data?.temperature ?? 0;
   const irradiance = esp32Data?.irradiance ?? 0;
+  const power = esp32Data ? voltage * current : 0;
   const isConnected = !!esp32Data;
 
-  const power = voltage * current;
+  // Combine loading states
+  const isLoading = isUserLoading || isEsp32DataLoading;
 
-  if (isUserLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-xl">Loading Dashboard...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,7 +84,7 @@ export default function DashboardPage() {
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isEsp32DataLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold text-blue-400">{voltage.toFixed(1)} V</div>}
+            {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold text-blue-400">{voltage.toFixed(1)} V</div>}
           </CardContent>
         </Card>
         <Card>
@@ -99,7 +93,7 @@ export default function DashboardPage() {
             <Waves className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isEsp32DataLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold text-blue-400">{current.toFixed(2)} A</div>}
+            {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold text-blue-400">{current.toFixed(2)} A</div>}
           </CardContent>
         </Card>
         <Card>
@@ -108,7 +102,7 @@ export default function DashboardPage() {
             <PowerIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             {isEsp32DataLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold">{power.toFixed(0)} W</div>}
+             {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold">{power.toFixed(0)} W</div>}
           </CardContent>
         </Card>
         <Card>
@@ -117,7 +111,7 @@ export default function DashboardPage() {
             <Thermometer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             {isEsp32DataLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold">{temperature.toFixed(1)} °C</div>}
+             {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold">{temperature.toFixed(1)} °C</div>}
           </CardContent>
         </Card>
       </div>
@@ -129,7 +123,7 @@ export default function DashboardPage() {
             <Info className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             {isEsp32DataLoading ? (<div className="text-xl font-bold">Loading...</div>) : isConnected ? (
+             {isLoading ? (<div className="text-xl font-bold">Loading...</div>) : isConnected ? (
               <div className="flex items-center gap-2">
                   <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -174,7 +168,7 @@ export default function DashboardPage() {
             <Sun className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             {isEsp32DataLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold">{irradiance.toFixed(0)} <span className="text-base font-normal">W/m²</span></div>}
+             {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold">{irradiance.toFixed(0)} <span className="text-base font-normal">W/m²</span></div>}
             <p className="text-xs text-muted-foreground">Panel Insolation</p>
           </CardContent>
         </Card>
