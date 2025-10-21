@@ -53,6 +53,7 @@ export function DailyGenerationLoadsChart() {
           tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
           axisLine={{ stroke: 'hsl(var(--border))' }}
           tickLine={{ stroke: 'hsl(var(--border))' }}
+          tickFormatter={(value) => `${value} kWh`}
         />
         <Tooltip
             cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1, strokeDasharray: "3 3" }}
@@ -63,7 +64,7 @@ export function DailyGenerationLoadsChart() {
                         <p className="font-bold text-base mb-2">{label}</p>
                         {payload.map((entry, index) => (
                             <p key={`item-${index}`} style={{ color: entry.color }} className="text-sm">
-                                {`${entry.name}: ${entry.value?.toFixed(2)}`}
+                                {`${entry.name}: ${entry.value?.toFixed(2)} kWh`}
                             </p>
                         ))}
                     </div>
@@ -84,7 +85,7 @@ export function DailyGenerationLoadsChart() {
         <Line type="monotone" dataKey="communityA" name="Community A" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={false} />
         <Line type="monotone" dataKey="communityB" name="Community B" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={false} />
         <Line type="monotone" dataKey="communityC" name="Community C" stroke="hsl(var(--chart-4))" strokeWidth={2} dot={false} />
-        <Line type="monotone" dataKey="generation" name="Generation (kWh)" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: 'hsl(var(--primary))' }} />
+        <Line type="monotone" dataKey="generation" name="Generation" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: 'hsl(var(--primary))' }} />
       </LineChart>
     </ResponsiveContainer>
   );
