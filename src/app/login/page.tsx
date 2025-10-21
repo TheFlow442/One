@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirebase } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { createSession } from '@/lib/auth-actions';
 import { useRouter } from 'next/navigation';
@@ -15,11 +16,15 @@ import { useRouter } from 'next/navigation';
 export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const auth = useAuth();
-  const { isUserLoading } = useUser();
   const router = useRouter();
 
   const handleSubmit = async (formData: FormData) => {
     setErrorMessage(undefined);
+
+    if (!auth) {
+        setErrorMessage('Authentication service is not available. Please try again later.');
+        return;
+    }
 
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -35,7 +40,7 @@ export default function LoginPage() {
         await createSession(idToken);
         router.push('/dashboard');
     } catch (error: any) {
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
             setErrorMessage('Invalid email or password.');
         } else if (error.code === 'auth/operation-not-allowed') {
             setErrorMessage('Sign-in with email and password is not enabled for this project. Please enable it in the Firebase console.');
@@ -91,9 +96,14 @@ export default function LoginPage() {
 function LoginButton() {
   const { pending } = useFormStatus();
   const { isUserLoading } = useUser();
+  const { areServicesLoading } = useFirebase();
+  const isDisabled = pending || isUserLoading || areServicesLoading;
+
   return (
-    <Button className="w-full" type="submit" aria-disabled={pending || isUserLoading} disabled={pending || isUserLoading}>
+    <Button className="w-full" type="submit" aria-disabled={isDisabled} disabled={isDisabled}>
       {pending ? 'Signing In...' : 'Sign In'}
     </Button>
   );
 }
+
+    

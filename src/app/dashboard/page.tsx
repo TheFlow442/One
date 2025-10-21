@@ -24,15 +24,16 @@ import { Badge } from '@/components/ui/badge';
 import { CommunityDistributionChart } from '@/components/dashboard/community-distribution-chart';
 import { SolarGenerationChart } from '@/components/dashboard/solar-generation-chart';
 import { BatteryStateChart } from '@/components/dashboard/battery-state-chart';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser, useFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
 export default function DashboardPage() {
+  const { areServicesLoading } = useFirebase();
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
 
   const esp32DataRef = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !firestore) return null;
     // Firestore is guaranteed to be available by the hook
     return doc(firestore, `users/${user.uid}/esp32_data/live_data`);
   }, [firestore, user]);
@@ -49,10 +50,10 @@ export default function DashboardPage() {
   const isConnected = !!esp32Data;
 
   // Combine loading states
-  const isLoading = isUserLoading || (user && isEsp32DataLoading);
+  const isLoading = areServicesLoading || isUserLoading || (user && isEsp32DataLoading);
 
-  if (isUserLoading) {
-    return <div>Loading user...</div>
+  if (areServicesLoading || isUserLoading) {
+    return <div>Loading...</div>
   }
 
   if (!user) {
@@ -241,4 +242,6 @@ export default function DashboardPage() {
     </div>
   );
 }
+    
+
     
