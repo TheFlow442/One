@@ -18,7 +18,6 @@ import {
   Users,
   Sun,
   History,
-  Home
 } from "lucide-react";
 import Link from 'next/link';
 import { usePathname } from "next/navigation";
@@ -90,7 +89,7 @@ export function SidebarNavContent() {
         <SidebarMenu className="mt-4">
           <p className="px-4 text-sm font-semibold text-muted-foreground">Communities</p>
           <SidebarMenuItem>
-              <SidebarMenuButton href="#" isActive={isActive('/community-a')} className="mt-2">
+              <SidebarMenuButton href="/community-a" isActive={isActive('/community-a')} className="mt-2">
                   <Users />
                   Community A
               </SidebarMenuButton>
