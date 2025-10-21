@@ -14,11 +14,16 @@ import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
-  const auth = useAuth();
+  const auth = useAuth(); // This can be null initially
   const router = useRouter();
 
   const handleSubmit = async (formData: FormData) => {
     setErrorMessage(undefined);
+    if (!auth) {
+        setErrorMessage('Firebase is not ready. Please wait a moment and try again.');
+        return;
+    }
+
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
@@ -88,8 +93,9 @@ export default function LoginPage() {
 
 function LoginButton() {
   const { pending } = useFormStatus();
+  const auth = useAuth(); // Check auth status here as well
   return (
-    <Button className="w-full" aria-disabled={pending}>
+    <Button className="w-full" type="submit" aria-disabled={pending || !auth}>
       {pending ? 'Signing In...' : 'Sign In'}
     </Button>
   );
