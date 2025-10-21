@@ -25,9 +25,11 @@ async function verifySession(session: string | undefined) {
   }
   initializeAdmin();
   try {
+    // Verify the session cookie. This will throw an error if the cookie is invalid.
     await admin.auth().verifySessionCookie(session, true);
     return true;
   } catch (error) {
+    // Session cookie is invalid.
     return false;
   }
 }
