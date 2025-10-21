@@ -15,8 +15,12 @@ import {
   Battery,
   Hourglass,
   Sun,
-  AreaChart,
+  Users,
+  TestTube,
 } from 'lucide-react';
+import { SolarGenerationChart } from '@/components/dashboard/solar-generation-chart';
+import { CommunityDistributionChart } from '@/components/dashboard/community-distribution-chart';
+import { Badge } from '@/components/ui/badge';
 
 export default function DashboardPage() {
   return (
@@ -112,17 +116,40 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-      <Card className="col-span-1 md:col-span-2 lg:col-span-4">
-        <CardHeader>
-          <CardTitle>Solar Generation</CardTitle>
-          <CardDescription>
-            A chart showing solar power generation over time.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="h-[200px] flex items-center justify-center">
-          <AreaChart className="h-32 w-32 text-muted-foreground" />
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+           <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Solar Generation</CardTitle>
+              <CardDescription>
+                A chart showing solar power generation over time.
+              </CardDescription>
+            </div>
+             <Badge variant="outline" className="flex items-center gap-1">
+              <TestTube className="h-3 w-3" />
+              Simulated Data
+            </Badge>
+          </CardHeader>
+          <CardContent className="h-[250px] pr-0">
+            <SolarGenerationChart />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+                <Users className="h-6 w-6" />
+                <CardTitle>Community Distribution Today</CardTitle>
+            </div>
+            <Badge variant="outline" className="flex items-center gap-1">
+              <TestTube className="h-3 w-3" />
+              Simulated Data
+            </Badge>
+          </CardHeader>
+          <CardContent className="h-[250px] pr-0">
+            <CommunityDistributionChart />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
