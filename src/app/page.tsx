@@ -24,19 +24,23 @@ import { Badge } from '@/components/ui/badge';
 import { CommunityDistributionChart } from '@/components/dashboard/community-distribution-chart';
 import { SolarGenerationChart } from '@/components/dashboard/solar-generation-chart';
 import { BatteryStateChart } from '@/components/dashboard/battery-state-chart';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
 export default function DashboardPage() {
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
 
   const esp32DataRef = useMemoFirebase(() => {
-    if (!firestore) return null;
-    // Connect to the specific document for live ESP32 data
-    return doc(firestore, 'users/user_123/esp32_data/live_data');
-  }, [firestore]);
+    // Wait until we have a user to construct the path
+    if (!firestore || !user) return null;
+    // Connect to the specific document for live ESP32 data for the logged-in user
+    return doc(firestore, `users/${user.uid}/esp32_data/live_data`);
+  }, [firestore, user]);
 
-  const { data: esp32Data } = useDoc(esp32DataRef);
+  const { data: esp32Data, isLoading: isEsp32DataLoading } = useDoc(esp32DataRef);
+
+  const isLoading = isUserLoading || isEsp32DataLoading;
 
   // Use live data if available, otherwise default to 0
   const voltage = esp32Data?.voltage ?? 0;
@@ -46,6 +50,14 @@ export default function DashboardPage() {
   const isConnected = !!esp32Data;
 
   const power = voltage * current;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-xl">Loading Dashboard...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -58,7 +70,7 @@ export default function DashboardPage() {
           <div className="relative">
             <User className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Image
-              src="https://picsum.photos/seed/user/40/40"
+              src={user?.photoURL || "https://picsum.photos/seed/user/40/40"}
               alt="User Avatar"
               width={40}
               height={40}
@@ -232,3 +244,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
