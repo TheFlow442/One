@@ -63,7 +63,7 @@ export default function AlertsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <Badge variant="warning">warning</Badge>
+                <Badge variant="destructive">warning</Badge>
                 <Button variant="outline">Acknowledge</Button>
               </div>
             </Card>

@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
@@ -40,7 +41,7 @@ export function SolarGenerationChart() {
           tickLine={false}
         />
         <Tooltip
-          cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: "3 3" }}
+          cursor={{ strokeWidth: 1, strokeDasharray: "3 3" }}
           content={({ active, payload, label }) => {
             if (active && payload && payload.length) {
               return (

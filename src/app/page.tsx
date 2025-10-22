@@ -199,7 +199,7 @@ export default function DashboardPage() {
                             <p className="text-xs text-muted-foreground">{alert.description}</p>
                         </div>
                     </div>
-                    <Badge variant="warning">warning</Badge>
+                    <Badge variant="destructive">warning</Badge>
                 </div>
               ))}
           </CardContent>
