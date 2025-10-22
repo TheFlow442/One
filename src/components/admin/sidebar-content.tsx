@@ -48,7 +48,7 @@ export function AdminSidebarNavContent() {
              <SidebarMenuItem>
               <SidebarMenuButton href="/dashboard">
                 <Users />
-                User Dashboard
+                User View
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

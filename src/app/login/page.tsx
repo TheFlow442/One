@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { useFirebase, useUser } from '@/firebase';
+import { useFirebase } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { createSession } from '@/lib/auth-actions';
 import { useRouter } from 'next/navigation';
@@ -180,8 +180,7 @@ export default function LoginPage() {
 
 function LoginButton() {
   const { pending } = useFormStatus();
-  const { isUserLoading } = useUser();
-  const { areServicesLoading } = useFirebase();
+  const { isUserLoading, areServicesLoading } = useFirebase();
   const isDisabled = pending || isUserLoading || areServicesLoading;
 
   return (
