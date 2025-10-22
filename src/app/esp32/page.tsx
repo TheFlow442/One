@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { firebaseConfig } from '@/firebase/config';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Cpu } from 'lucide-react';
+import { Cpu, KeyRound, Send } from 'lucide-react';
 import { CodeBlock } from '@/components/code-block';
 
 export default function ESP32Page() {
@@ -25,60 +25,58 @@ export default function ESP32Page() {
 
   return (
     <div className="flex flex-col gap-6">
-       <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4">
         <Cpu className="h-8 w-8" />
         <div>
-          <h1 className="text-3xl font-bold">ESP32 Connection Details</h1>
+          <h1 className="text-3xl font-bold">ESP32 Connection Guide</h1>
           <p className="text-muted-foreground">
-            Use these details in your ESP32 code to connect to your Firebase project.
+            Follow these steps for your ESP32 to connect and send data to Firebase.
           </p>
         </div>
       </div>
+      
       <Card>
         <CardHeader>
-          <CardTitle>Firebase Project Configuration</CardTitle>
+          <CardTitle className="flex items-center gap-2"><KeyRound /> Step 1: Authentication</CardTitle>
           <CardDescription>
-            These are the core credentials your ESP32 needs to identify your Firebase project.
+            First, the ESP32 must authenticate as a user to get a temporary ID Token. This token acts as a secure key for sending data. It needs to be done once and then refreshed when it expires (usually after one hour).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="project-id">Project ID</Label>
-            <Input id="project-id" value={projectId} readOnly />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="api-key">Web API Key</Label>
+           <div className="space-y-2">
+            <Label htmlFor="api-key">Web API Key (Included in Endpoint URL)</Label>
             <Input id="api-key" value={apiKey} readOnly />
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-            <CardTitle>Authentication Endpoint</CardTitle>
-            <CardDescription>
-                To get a user ID token, your ESP32 should sign in as a user by sending a POST request to this endpoint with the user's email and password.
-            </CardDescription>
-        </CardHeader>
-        <CardContent>
+          <div className="space-y-2">
+            <Label htmlFor="identity-endpoint">Authentication Endpoint URL</Label>
              <Input id="identity-endpoint" value={identityEndpoint} readOnly />
-             <p className="text-sm text-muted-foreground mt-2">The ID token returned from this request must be included in the Authorization header of your Firestore requests as a Bearer token.</p>
+             <p className="text-sm text-muted-foreground mt-2">Send a `POST` request to this URL with the user's email and password in the body to receive an ID Token.</p>
+          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Firestore REST API Endpoint</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Send /> Step 2: Sending Data to Firestore</CardTitle>
           <CardDescription>
-            Your ESP32 should send `POST` requests to this URL to store data. Remember to replace {'`{userId}`'} with the actual user's ID obtained after authentication.
+            Once you have the ID Token, use it to authorize `POST` requests to the Firestore REST API.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            <Input id="firestore-endpoint" value={firestoreEndpoint} readOnly />
+            <div className="space-y-2">
+                <Label>Authorization Header</Label>
+                <Input value="Authorization: Bearer <ID_TOKEN>" readOnly />
+                <p className="text-sm text-muted-foreground">Include this header in your request, replacing `{'<ID_TOKEN>'}` with the token from Step 1.</p>
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="firestore-endpoint">Firestore REST API Endpoint URL</Label>
+                <Input id="firestore-endpoint" value={firestoreEndpoint} readOnly />
+                <p className="text-sm text-muted-foreground">Remember to replace `{'`{userId}`'}` with the actual user's ID.</p>
+            </div>
             <div className="space-y-2">
                 <Label>Example JSON Payload</Label>
                 <CodeBlock language="json" code={payloadExample} />
-                <p className="text-sm text-muted-foreground">This is the structure of the JSON body for your POST request.</p>
+                <p className="text-sm text-muted-foreground">This is the structure of the JSON body for your `POST` request to the Firestore endpoint.</p>
             </div>
         </CardContent>
       </Card>
