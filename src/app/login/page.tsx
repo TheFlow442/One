@@ -53,10 +53,10 @@ export default function LoginPage() {
         const idToken = await userCredential.user.getIdToken();
         await createSession(idToken);
         toast({
-          title: 'Login Successful',
-          description: 'Redirecting to your dashboard...',
+          title: 'Admin Login Successful',
+          description: 'Redirecting to your admin dashboard...',
         });
-        router.push('/dashboard');
+        router.push('/admin');
       } catch (error: any) {
           // This can happen if the admin user doesn't exist.
           console.error('Admin Login Error:', error);
@@ -104,9 +104,6 @@ export default function LoginPage() {
             description = 'Invalid email or password.';
         } else if (error.code === 'auth/operation-not-allowed') {
             description = 'Email/password sign-in is not enabled. Please contact support.';
-        } else {
-             // Catch session creation failure specifically
-            description = 'Could not create a session. Please try again.';
         }
         console.error('Login Error:', error);
         toast({
