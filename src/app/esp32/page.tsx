@@ -70,7 +70,7 @@ export default function ESP32Page() {
         <CardHeader>
           <CardTitle>Firestore REST API Endpoint</CardTitle>
           <CardDescription>
-            Your ESP32 should send `POST` requests to this URL to store data. Remember to replace `'{userId}'` with the actual user's ID obtained after authentication.
+            Your ESP32 should send `POST` requests to this URL to store data. Remember to replace {'`{userId}`'} with the actual user's ID obtained after authentication.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
