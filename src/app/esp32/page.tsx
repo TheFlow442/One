@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { firebaseConfig } from '@/firebase/config';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Cpu, KeyRound, Send } from 'lucide-react';
+import { Cpu, KeyRound, Send, ShieldCheck } from 'lucide-react';
 import { CodeBlock } from '@/components/code-block';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function ESP32Page() {
   const projectId = firebaseConfig.projectId;
@@ -34,6 +35,14 @@ export default function ESP32Page() {
           </p>
         </div>
       </div>
+
+      <Alert>
+        <ShieldCheck className="h-4 w-4" />
+        <AlertTitle>Is this secure?</AlertTitle>
+        <AlertDescription>
+          Yes. The Web API Key is a public identifier, not a secret. Access to your data is protected by Firestore Security Rules, which require a user to be authenticated.
+        </AlertDescription>
+      </Alert>
       
       <Card>
         <CardHeader>
