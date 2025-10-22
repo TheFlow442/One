@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,41 +11,39 @@ import Link from 'next/link';
 import { useFirebase, useUser } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 const ADMIN_EMAIL = 'admin@volta.view';
 const ADMIN_PASSWORD = 'verylongandsecurepassword'; // This is a placeholder and not used for login, but required for account creation.
 
 export default function SignupPage() {
-  const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const { auth, firestore, areServicesLoading } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleCreateAdmin = async () => {
-      if (areServicesLoading || !auth) return;
-      try {
-          // This will only create the user if they don't already exist.
-          // It will fail silently if the user exists, which is fine for this purpose.
-          await createUserWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
-      } catch (error: any) {
-          if (error.code !== 'auth/email-already-in-use') {
-              console.error("Could not ensure admin account exists:", error);
-          }
-      }
-  }
-
-  useState(() => {
-      handleCreateAdmin();
-  });
+  // Correctly handle the side effect of creating an admin user.
+  useEffect(() => {
+    const handleCreateAdmin = async () => {
+        if (areServicesLoading || !auth) return;
+        try {
+            // This will only create the user if they don't already exist.
+            // It will fail silently if the user exists, which is fine for this purpose.
+            await createUserWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
+        } catch (error: any) {
+            if (error.code !== 'auth/email-already-in-use') {
+                console.error("Could not ensure admin account exists:", error);
+            }
+        }
+    }
+    handleCreateAdmin();
+  }, [auth, areServicesLoading]);
 
 
   const handleSubmit = async (formData: FormData) => {
-    setErrorMessage(undefined);
-
     if (areServicesLoading || !auth || !firestore) {
       toast({
         title: 'Error',
@@ -79,9 +77,9 @@ export default function SignupPage() {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // Create user document in Firestore
+        // Create user document in Firestore using the non-blocking helper
         const userRef = doc(firestore, 'users', user.uid);
-        await setDoc(userRef, {
+        setDocumentNonBlocking(userRef, {
             id: user.uid,
             email: user.email
         }, { merge: true });
@@ -135,11 +133,6 @@ export default function SignupPage() {
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" name="password" required minLength={6} />
             </div>
-            {errorMessage && (
-              <div className="text-sm text-destructive">
-                {errorMessage}
-              </div>
-            )}
             <SignUpButton />
             <div className="text-center text-sm">
                 Already have an account?{' '}
