@@ -25,7 +25,7 @@ export default function SignupPage() {
   const router = useRouter();
 
   const handleCreateAdmin = async () => {
-      if (areServicesLoading) return;
+      if (areServicesLoading || !auth) return;
       try {
           // This will only create the user if they don't already exist.
           // It will fail silently if the user exists, which is fine for this purpose.
@@ -45,7 +45,7 @@ export default function SignupPage() {
   const handleSubmit = async (formData: FormData) => {
     setErrorMessage(undefined);
 
-    if (areServicesLoading) {
+    if (areServicesLoading || !auth || !firestore) {
       setErrorMessage('Authentication service is not ready, please wait a moment and try again.');
       return;
     }

@@ -28,7 +28,7 @@ export default function LoginPage() {
   const handleSubmit = async (formData: FormData) => {
     setErrorMessage(undefined);
 
-    if (areServicesLoading) {
+    if (areServicesLoading || !auth) {
       setErrorMessage('Authentication service is not ready, please wait a moment and try again.');
       return;
     }
