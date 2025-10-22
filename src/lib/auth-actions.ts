@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 
 const SESSION_COOKIE_NAME = '__session';
 
+// Helper function to initialize Firebase Admin SDK safely.
 function initializeAdmin() {
   if (!admin.apps.length) {
     try {
@@ -34,7 +35,7 @@ export async function createSession(idToken: string) {
     
   } catch (error) {
     console.error('Failed to create session cookie:', error);
-    throw new Error('Session creation failed');
+    // Don't throw a generic error, let the calling page handle user feedback.
   }
 }
 

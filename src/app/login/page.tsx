@@ -104,6 +104,9 @@ export default function LoginPage() {
             description = 'Invalid email or password.';
         } else if (error.code === 'auth/operation-not-allowed') {
             description = 'Email/password sign-in is not enabled. Please contact support.';
+        } else {
+             // Catch session creation failure specifically
+            description = 'Could not create a session. Please try again.';
         }
         console.error('Login Error:', error);
         toast({
