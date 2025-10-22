@@ -16,6 +16,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Zap } from 'lucide-react';
 
 const ADMIN_SECRET_KEY = '1258solaradmin';
+const ADMIN_EMAIL = 'admin@volta.view';
+const ADMIN_PASSWORD = 'verylongandsecurepassword'; // This is a placeholder and not used for login, but required for account creation.
 
 export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
@@ -37,6 +39,22 @@ export default function LoginPage() {
         setErrorMessage('Invalid admin secret key.');
         return;
       }
+      // For admin, we bypass the form email/password and use a dedicated admin account
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
+        const idToken = await userCredential.user.getIdToken();
+        await createSession(idToken);
+        router.push('/dashboard');
+      } catch (error: any) {
+          // This can happen if the admin user doesn't exist.
+          console.error('Admin Login Error:', error);
+          if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+               setErrorMessage('Admin account not found or configured correctly. Please contact support.');
+          } else {
+               setErrorMessage('An unknown error occurred during admin sign-in.');
+          }
+      }
+      return; 
     }
 
     const email = formData.get('email') as string;
@@ -78,25 +96,29 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form action={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                name="email"
-                placeholder="name@example.com"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Password</Label>
-                    <Link href="#" className="text-sm text-primary hover:underline">
-                        Forgot password?
-                    </Link>
-                </div>
-              <Input id="password" type="password" name="password" required />
-            </div>
+            {!isAdmin && (
+                <>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        name="email"
+                        placeholder="name@example.com"
+                        required={!isAdmin}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="password">Password</Label>
+                            <Link href="#" className="text-sm text-primary hover:underline">
+                                Forgot password?
+                            </Link>
+                        </div>
+                      <Input id="password" type="password" name="password" required={!isAdmin} />
+                    </div>
+                </>
+            )}
 
             <div className="flex items-center space-x-2">
               <Checkbox id="is-admin" checked={isAdmin} onCheckedChange={() => setIsAdmin(!isAdmin)} />

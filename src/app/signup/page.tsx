@@ -16,10 +16,31 @@ import { doc, setDoc } from 'firebase/firestore';
 import { Zap } from 'lucide-react';
 
 
+const ADMIN_EMAIL = 'admin@volta.view';
+const ADMIN_PASSWORD = 'verylongandsecurepassword'; // This is a placeholder and not used for login, but required for account creation.
+
 export default function SignupPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const { auth, firestore, areServicesLoading } = useFirebase();
   const router = useRouter();
+
+  const handleCreateAdmin = async () => {
+      if (areServicesLoading) return;
+      try {
+          // This will only create the user if they don't already exist.
+          // It will fail silently if the user exists, which is fine for this purpose.
+          await createUserWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
+      } catch (error: any) {
+          if (error.code !== 'auth/email-already-in-use') {
+              console.error("Could not ensure admin account exists:", error);
+          }
+      }
+  }
+
+  useState(() => {
+      handleCreateAdmin();
+  });
+
 
   const handleSubmit = async (formData: FormData) => {
     setErrorMessage(undefined);
