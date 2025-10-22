@@ -13,6 +13,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { createSession } from '@/lib/auth-actions';
 import { useRouter } from 'next/navigation';
 import { doc, setDoc } from 'firebase/firestore';
+import { Zap } from 'lucide-react';
 
 
 export default function SignupPage() {
@@ -67,7 +68,11 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="flex items-center justify-center min-h-screen bg-background">
+    <main className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+      <div className="flex items-center gap-2 mb-4">
+            <Zap className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold text-primary">VoltaView</h1>
+      </div>
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Sign Up</CardTitle>
@@ -81,7 +86,7 @@ export default function SignupPage() {
                 id="email"
                 type="email"
                 name="email"
-                placeholder="m@example.com"
+                placeholder="name@example.com"
                 required
               />
             </div>
@@ -90,16 +95,17 @@ export default function SignupPage() {
               <Input id="password" type="password" name="password" required minLength={6} />
             </div>
             {errorMessage && (
-              <div className="text-sm text-red-500">
+              <div className="text-sm text-destructive">
                 {errorMessage}
               </div>
             )}
             <SignUpButton />
-            <Button variant="outline" className="w-full" asChild>
-                <Link href="/login">
-                    Already have an account? Sign In
+            <div className="text-center text-sm">
+                Already have an account?{' '}
+                <Link href="/login" className="text-primary hover:underline">
+                    Sign In
                 </Link>
-            </Button>
+            </div>
           </form>
         </CardContent>
       </Card>

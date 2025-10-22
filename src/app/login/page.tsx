@@ -12,9 +12,14 @@ import { useFirebase, useUser } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { createSession } from '@/lib/auth-actions';
 import { useRouter } from 'next/navigation';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Zap } from 'lucide-react';
+
+const ADMIN_SECRET_KEY = '1258solaradmin';
 
 export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const [isAdmin, setIsAdmin] = useState(false);
   const { auth, areServicesLoading } = useFirebase();
   const router = useRouter();
 
@@ -24,6 +29,14 @@ export default function LoginPage() {
     if (areServicesLoading) {
       setErrorMessage('Authentication service is not ready, please wait a moment and try again.');
       return;
+    }
+
+    if (isAdmin) {
+      const secretKey = formData.get('secretKey') as string;
+      if (secretKey !== ADMIN_SECRET_KEY) {
+        setErrorMessage('Invalid admin secret key.');
+        return;
+      }
     }
 
     const email = formData.get('email') as string;
@@ -53,7 +66,11 @@ export default function LoginPage() {
 
 
   return (
-    <main className="flex items-center justify-center min-h-screen bg-background">
+    <main className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+        <div className="flex items-center gap-2 mb-4">
+            <Zap className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold text-primary">VoltaView</h1>
+        </div>
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Sign In</CardTitle>
@@ -67,25 +84,45 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 name="email"
-                placeholder="m@example.com"
+                placeholder="name@example.com"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    <Link href="#" className="text-sm text-primary hover:underline">
+                        Forgot password?
+                    </Link>
+                </div>
               <Input id="password" type="password" name="password" required />
             </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox id="is-admin" checked={isAdmin} onCheckedChange={() => setIsAdmin(!isAdmin)} />
+              <Label htmlFor="is-admin" className="font-normal">Sign in as Admin</Label>
+            </div>
+
+            {isAdmin && (
+                <div className="space-y-2">
+                    <Label htmlFor="secretKey">Admin Secret Key</Label>
+                    <Input id="secretKey" type="password" name="secretKey" required />
+                </div>
+            )}
+
+
             {errorMessage && (
-              <div className="text-sm text-red-500">
+              <div className="text-sm text-destructive">
                 {errorMessage}
               </div>
             )}
             <LoginButton />
-             <Button variant="outline" className="w-full" asChild>
-                <Link href="/signup">
-                    Don't have an account? Sign Up
+             <div className="text-center text-sm">
+                Don't have an account?{' '}
+                <Link href="/signup" className="text-primary hover:underline">
+                    Sign up
                 </Link>
-            </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
