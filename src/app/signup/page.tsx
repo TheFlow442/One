@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -96,8 +96,10 @@ export default function SignupPage() {
             description = 'This email is already in use.';
         } else if (error.code === 'auth/weak-password') {
             description = 'The password is too weak. Please use at least 6 characters.';
+        } else {
+            console.error('Signup Error:', error);
         }
-        console.error('Signup Error:', error);
+        
         toast({
             title: 'Sign Up Failed',
             description,
