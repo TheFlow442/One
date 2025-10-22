@@ -10,10 +10,10 @@ import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { useFirebase, useUser } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { createSession } from '@/lib/auth-actions';
 import { useRouter } from 'next/navigation';
 import { doc, setDoc } from 'firebase/firestore';
 import { Zap } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 
 const ADMIN_EMAIL = 'admin@volta.view';
@@ -23,6 +23,7 @@ export default function SignupPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const { auth, firestore, areServicesLoading } = useFirebase();
   const router = useRouter();
+  const { toast } = useToast();
 
   const handleCreateAdmin = async () => {
       if (areServicesLoading || !auth) return;
@@ -46,7 +47,11 @@ export default function SignupPage() {
     setErrorMessage(undefined);
 
     if (areServicesLoading || !auth || !firestore) {
-      setErrorMessage('Authentication service is not ready, please wait a moment and try again.');
+      toast({
+        title: 'Error',
+        description: 'Authentication service is not ready. Please wait a moment and try again.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -54,11 +59,19 @@ export default function SignupPage() {
     const password = formData.get('password') as string;
 
     if (!email || !password) {
-        setErrorMessage('Email and password are required.');
+        toast({
+            title: 'Sign Up Failed',
+            description: 'Email and password are required.',
+            variant: 'destructive',
+        });
         return;
     }
     if (password.length < 6) {
-        setErrorMessage('Password must be at least 6 characters long.');
+        toast({
+            title: 'Sign Up Failed',
+            description: 'Password must be at least 6 characters long.',
+            variant: 'destructive',
+        });
         return;
     }
     
@@ -73,18 +86,25 @@ export default function SignupPage() {
             email: user.email
         }, { merge: true });
 
-        const idToken = await user.getIdToken();
-        await createSession(idToken);
-        router.push('/dashboard');
+        toast({
+            title: 'Sign Up Successful',
+            description: 'You can now sign in with your new account.',
+        });
+        router.push('/login');
+
     } catch (error: any) {
+        let description = 'An unknown error occurred during sign-up.';
         if (error.code === 'auth/email-already-in-use') {
-            setErrorMessage('This email is already in use.');
+            description = 'This email is already in use.';
         } else if (error.code === 'auth/weak-password') {
-            setErrorMessage('The password is too weak. Please use at least 6 characters.');
-        } else {
-            console.error('Signup Error:', error);
-            setErrorMessage('An unknown error occurred during sign-up.');
+            description = 'The password is too weak. Please use at least 6 characters.';
         }
+        console.error('Signup Error:', error);
+        toast({
+            title: 'Sign Up Failed',
+            description,
+            variant: 'destructive',
+        });
     }
   };
 
