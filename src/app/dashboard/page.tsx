@@ -1,4 +1,3 @@
-
 'use client';
 
 import Image from 'next/image';
@@ -68,26 +67,22 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between p-6 bg-primary rounded-lg text-primary-foreground -mx-4 -mt-4 lg:-mx-6 lg:-mt-6">
         <div className="flex items-center gap-3">
-          <Zap className="h-8 w-8" />
           <div>
-            <h1 className="text-3xl font-bold">Smart Solar Microgrid Management</h1>
-            <p className="text-muted-foreground">Monitor your solar system in real-time</p>
+            <h1 className="text-2xl font-bold">Smart Solar Microgrid Management</h1>
+            <p className="text-primary-foreground/80">Monitor your solar system in real-time</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <User className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Image
-              src={user?.photoURL || "https://picsum.photos/seed/user/40/40"}
-              alt="User Avatar"
-              width={40}
-              height={40}
-              className="rounded-full"
-              data-ai-hint="user avatar"
-            />
-          </div>
+          <Image
+            src={user?.photoURL || "https://picsum.photos/seed/user/40/40"}
+            alt="User Avatar"
+            width={40}
+            height={40}
+            className="rounded-full border-2 border-primary-foreground/50"
+            data-ai-hint="user avatar"
+          />
         </div>
       </div>
 
@@ -98,7 +93,7 @@ export default function DashboardPage() {
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold text-blue-400">{voltage.toFixed(1)} V</div>}
+            {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold">{voltage.toFixed(1)} V</div>}
           </CardContent>
         </Card>
         <Card>
@@ -107,7 +102,7 @@ export default function DashboardPage() {
             <Waves className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold text-blue-400">{current.toFixed(2)} A</div>}
+            {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold">{current.toFixed(2)} A</div>}
           </CardContent>
         </Card>
         <Card>
@@ -121,7 +116,7 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Panel Temperature</CardTitle>
+            <CardTitle className="text-sm font-medium">Temperature</CardTitle>
             <Thermometer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -137,23 +132,23 @@ export default function DashboardPage() {
             <Info className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             {isLoading ? (<div className="text-xl font-bold">Loading...</div>) : isConnected ? (
+             {isLoading ? (<div className="text-lg font-bold">Loading...</div>) : isConnected ? (
               <div className="flex items-center gap-2">
                   <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                   </span>
-                  <span className="text-xl font-bold">Online</span>
+                  <span className="text-lg font-bold">Online</span>
               </div>
             ) : (
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                 </span>
-                <span className="text-xl font-bold">Offline</span>
+                <span className="text-lg font-bold">Offline</span>
               </div>
             )}
-            <p className="text-xs text-muted-foreground">ESP32 Connection</p>
+            <p className="text-xs text-muted-foreground">Real-time state</p>
           </CardContent>
         </Card>
         <Card>
@@ -162,7 +157,7 @@ export default function DashboardPage() {
             <BatteryFull className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-400">100.0 %</div>
+            <div className="text-2xl font-bold">100.0 %</div>
             <p className="text-xs text-muted-foreground">Discharging</p>
           </CardContent>
         </Card>
@@ -183,7 +178,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
              {isLoading ? <div className="text-2xl font-bold">Loading...</div> : <div className="text-2xl font-bold">{irradiance.toFixed(0)} <span className="text-base font-normal">W/m²</span></div>}
-            <p className="text-xs text-muted-foreground">Panel Insolation</p>
+            <p className="text-xs text-muted-foreground">Insolation level</p>
           </CardContent>
         </Card>
       </div>
@@ -191,10 +186,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <Card className="col-span-1 lg:col-span-5">
-           <CardHeader>
-              <CardTitle>Solar Generation</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px] pr-0">
+          <CardContent className="h-[300px] p-2">
             <SolarGenerationChart />
           </CardContent>
         </Card>
@@ -229,9 +221,12 @@ export default function DashboardPage() {
           <CardContent className="space-y-4">
               {maintenanceAlerts.map((alert) => (
                 <div key={alert.id} className="flex justify-between items-center">
-                    <div>
-                        <p className="font-bold">{alert.title}</p>
-                        <p className="text-xs text-muted-foreground">{alert.description}</p>
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                        <div>
+                            <p className="font-semibold text-sm">{alert.title}</p>
+                            <p className="text-xs text-muted-foreground">{alert.description}</p>
+                        </div>
                     </div>
                     <Badge variant="warning">warning</Badge>
                 </div>
@@ -242,6 +237,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-    
-
-    

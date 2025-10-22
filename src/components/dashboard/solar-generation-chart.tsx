@@ -17,7 +17,7 @@ const chartData = [
 export function SolarGenerationChart() {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
+      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
         <defs>
           <linearGradient id="colorUv" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
@@ -28,6 +28,13 @@ export function SolarGenerationChart() {
           dataKey="value"
           domain={[0, 0.8]} 
           ticks={[0.35, 0.7]}
+          tickFormatter={(value) => value.toFixed(2)}
+          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
+          axisLine={false}
+          tickLine={false}
+        />
+        <XAxis
+          dataKey="time"
           tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
           axisLine={false}
           tickLine={false}
@@ -39,6 +46,7 @@ export function SolarGenerationChart() {
               return (
                 <div className="bg-popover p-2 rounded-lg border shadow-sm text-popover-foreground">
                   <p className="font-bold">{`${payload[0].value} kW`}</p>
+                   <p className="text-sm text-muted-foreground">{label}:00</p>
                 </div>
               );
             }
