@@ -14,29 +14,37 @@ import { createSession } from '@/lib/auth-actions';
 import { useRouter } from 'next/navigation';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Zap } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const ADMIN_SECRET_KEY = '1258solaradmin';
 const ADMIN_EMAIL = 'admin@volta.view';
 const ADMIN_PASSWORD = 'verylongandsecurepassword'; // This is a placeholder and not used for login, but required for account creation.
 
 export default function LoginPage() {
-  const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const [isAdmin, setIsAdmin] = useState(false);
   const { auth, areServicesLoading } = useFirebase();
   const router = useRouter();
+  const { toast } = useToast();
 
   const handleSubmit = async (formData: FormData) => {
-    setErrorMessage(undefined);
 
     if (areServicesLoading || !auth) {
-      setErrorMessage('Authentication service is not ready, please wait a moment and try again.');
+      toast({
+        title: 'Error',
+        description: 'Authentication service is not ready. Please wait a moment and try again.',
+        variant: 'destructive',
+      });
       return;
     }
 
     if (isAdmin) {
       const secretKey = formData.get('secretKey') as string;
       if (secretKey !== ADMIN_SECRET_KEY) {
-        setErrorMessage('Invalid admin secret key.');
+        toast({
+          title: 'Login Failed',
+          description: 'Invalid admin secret key.',
+          variant: 'destructive',
+        });
         return;
       }
       // For admin, we bypass the form email/password and use a dedicated admin account
@@ -44,14 +52,26 @@ export default function LoginPage() {
         const userCredential = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
         const idToken = await userCredential.user.getIdToken();
         await createSession(idToken);
+        toast({
+          title: 'Login Successful',
+          description: 'Redirecting to your dashboard...',
+        });
         router.push('/dashboard');
       } catch (error: any) {
           // This can happen if the admin user doesn't exist.
           console.error('Admin Login Error:', error);
           if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-               setErrorMessage('Admin account not found or configured correctly. Please contact support.');
+               toast({
+                 title: 'Login Failed',
+                 description: 'Admin account not found or configured correctly.',
+                 variant: 'destructive',
+               });
           } else {
-               setErrorMessage('An unknown error occurred during admin sign-in.');
+               toast({
+                 title: 'Login Failed',
+                 description: 'An unknown error occurred during admin sign-in.',
+                 variant: 'destructive',
+               });
           }
       }
       return; 
@@ -61,7 +81,11 @@ export default function LoginPage() {
     const password = formData.get('password') as string;
 
     if (!email || !password) {
-        setErrorMessage('Email and password are required.');
+        toast({
+          title: 'Login Failed',
+          description: 'Email and password are required.',
+          variant: 'destructive',
+        });
         return;
     }
     
@@ -69,16 +93,24 @@ export default function LoginPage() {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const idToken = await userCredential.user.getIdToken();
         await createSession(idToken);
+        toast({
+          title: 'Login Successful',
+          description: "Welcome back! We're redirecting you to your dashboard.",
+        });
         router.push('/dashboard');
     } catch (error: any) {
+        let description = 'An unknown error occurred during sign-in.';
         if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-            setErrorMessage('Invalid email or password.');
+            description = 'Invalid email or password.';
         } else if (error.code === 'auth/operation-not-allowed') {
-            setErrorMessage('Sign-in with email and password is not enabled for this project. Please enable it in the Firebase console.');
-        } else {
-            console.error('Login Error:', error);
-            setErrorMessage('An unknown error occurred during sign-in.');
+            description = 'Email/password sign-in is not enabled. Please contact support.';
         }
+        console.error('Login Error:', error);
+        toast({
+          title: 'Login Failed',
+          description,
+          variant: 'destructive',
+        });
     }
   };
 
@@ -132,12 +164,6 @@ export default function LoginPage() {
                 </div>
             )}
 
-
-            {errorMessage && (
-              <div className="text-sm text-destructive">
-                {errorMessage}
-              </div>
-            )}
             <LoginButton />
              <div className="text-center text-sm">
                 Don't have an account?{' '}
