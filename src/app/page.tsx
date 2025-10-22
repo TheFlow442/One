@@ -1,7 +1,7 @@
 
 'use client';
 
-import Image from 'next/image';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Card,
   CardContent,
@@ -50,14 +50,10 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <Image
-            src={"https://picsum.photos/seed/user/40/40"}
-            alt="User Avatar"
-            width={40}
-            height={40}
-            className="rounded-full border-2 border-primary-foreground/50"
-            data-ai-hint="user avatar"
-          />
+          <Avatar className="h-10 w-10 border-2 border-primary-foreground/50">
+            <AvatarImage src="https://picsum.photos/seed/user/40/40" alt="User Avatar" data-ai-hint="user avatar" />
+            <AvatarFallback>AMS</AvatarFallback>
+          </Avatar>
         </div>
       </div>
 
