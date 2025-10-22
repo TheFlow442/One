@@ -2,7 +2,7 @@
 "use client";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Home } from "lucide-react";
+import { Zap } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PanelLeft } from "lucide-react";
@@ -22,15 +22,10 @@ export function Header() {
 
        <div className="hidden md:flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
-            <Home className="h-6 w-6"/>
+            <Zap className="h-6 w-6 text-primary"/>
             <h1 className="text-xl font-bold">VoltaView</h1>
           </Link>
-        </div>
-
-       <div className="w-full flex-1 md:w-auto md:flex-initial ml-auto flex items-center gap-4">
         </div>
     </header>
   );
 }
-
-    

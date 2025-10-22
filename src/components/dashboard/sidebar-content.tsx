@@ -6,7 +6,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -19,21 +18,18 @@ import {
   Users,
   Sun,
   History,
-  LogOut,
   Zap
 } from "lucide-react";
 import Link from 'next/link';
 import { usePathname } from "next/navigation";
-import { Button } from "../ui/button";
-import { logout } from "@/lib/actions";
 
 export function SidebarNavContent() {
     const pathname = usePathname();
 
     const isActive = (path: string) => {
         // The root path should only be active if it's exactly the root.
-        if (path === '/dashboard') {
-            return pathname === '/dashboard';
+        if (path === '/') {
+            return pathname === '/';
         }
         return pathname.startsWith(path);
     }
@@ -42,7 +38,7 @@ export function SidebarNavContent() {
     <>
       <SidebarHeader className="border-b">
         <div className="flex items-center gap-2 p-4">
-            <Link href="/dashboard" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2">
                 <Zap className="h-6 w-6 text-primary" />
                 <h1 className="text-xl font-bold">VoltaView</h1>
             </Link>
@@ -51,7 +47,7 @@ export function SidebarNavContent() {
       <SidebarContent className="flex flex-col">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/dashboard" isActive={isActive('/dashboard')}>
+              <SidebarMenuButton href="/" isActive={isActive('/')}>
                 <LayoutGrid />
                 Dashboard
               </SidebarMenuButton>
@@ -122,14 +118,6 @@ export function SidebarNavContent() {
               </CardContent>
           </Card>
       </SidebarContent>
-        <SidebarFooter>
-            <form action={logout}>
-                <Button variant="ghost" className="w-full justify-start">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
-                </Button>
-            </form>
-      </SidebarFooter>
     </>
   );
 }
