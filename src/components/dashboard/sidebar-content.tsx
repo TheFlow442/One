@@ -82,6 +82,12 @@ export function SidebarNavContent() {
                 History
               </SidebarMenuButton>
             </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton href="/esp32" isActive={isActive('/esp32')}>
+                <Cpu />
+                ESP32 Connect
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
           
           <div className="mt-4 flex flex-col gap-4">
