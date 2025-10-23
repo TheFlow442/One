@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CommunityEnergyTrendChart } from '@/components/dashboard/community-energy-trend-chart';
+import { CommunityConsumptionGenerationChart } from '@/components/dashboard/community-consumption-generation-chart';
 import { Users, Zap, User, AlertTriangle, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +32,16 @@ const communityNodes = [
 const communityAlerts = [
     { id: 'alert-c5', title: 'Frequency Fluctuation', timestamp: '9:05 AM', level: 'warning' },
     { id: 'alert-c6', title: 'NODE-C04 Offline', timestamp: '8:45 AM', level: 'destructive' },
+];
+
+const chartData = [
+    { day: '1', consumption: 28, generation: 29 },
+    { day: '2', consumption: 30, generation: 28 },
+    { day: '3', consumption: 32, generation: 36 },
+    { day: '4', consumption: 29, generation: 34 },
+    { day: '5', consumption: 34, generation: 39 },
+    { day: '6', consumption: 36, generation: 35 },
+    { day: '7', consumption: 31, generation: 38 },
 ];
 
 export default function CommunityCPage() {
@@ -154,10 +164,13 @@ export default function CommunityCPage() {
 
       <Card>
         <CardHeader>
-        <CardTitle>Energy Trend (Last 14 Days)</CardTitle>
+            <CardTitle>Consumption vs. Generation (Last 7 Days)</CardTitle>
+            <CardDescription>
+                Daily comparison of energy consumed by the community versus solar energy generated.
+            </CardDescription>
         </CardHeader>
         <CardContent className="h-[400px]">
-        <CommunityEnergyTrendChart />
+            <CommunityConsumptionGenerationChart data={chartData} />
         </CardContent>
     </Card>
     </div>
