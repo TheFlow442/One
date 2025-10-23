@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { CommunityDistributionChart } from '@/components/dashboard/community-distribution-chart';
 import { SolarGenerationChart } from '@/components/dashboard/solar-generation-chart';
 import { BatteryStateChart } from '@/components/dashboard/battery-state-chart';
+import { useEffect, useState } from 'react';
 
 export default function DashboardPage() {
   const isLoading = false;
@@ -30,8 +31,27 @@ export default function DashboardPage() {
   const current = 5.2;
   const power = voltage * current;
   const temperature = 25.3;
-  const isConnected = true;
   const irradiance = 850;
+
+  // Simulate the timestamp of the last received data
+  // In a real app, this would come from Firestore.
+  // This timestamp is recent, so the status will be "Online".
+  const lastHeartbeat = new Date(); 
+
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    const now = new Date();
+    // Calculate the difference in minutes
+    const diffInMinutes = (now.getTime() - lastHeartbeat.getTime()) / (1000 * 60);
+
+    // If the last heartbeat was less than 5 minutes ago, consider it online.
+    if (diffInMinutes < 5) {
+      setIsConnected(true);
+    } else {
+      setIsConnected(false);
+    }
+  }, [lastHeartbeat]);
 
 
   const maintenanceAlerts = [
@@ -175,7 +195,7 @@ export default function DashboardPage() {
         <Card>
            <CardHeader>
             <CardTitle>Battery State</CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent className="h-[200px] flex flex-col justify-center items-center">
             <BatteryStateChart />
              <div className="text-center mt-2">
