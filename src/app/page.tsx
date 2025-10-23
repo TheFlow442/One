@@ -46,11 +46,7 @@ export default function DashboardPage() {
     const diffInMinutes = (now.getTime() - lastHeartbeat.getTime()) / (1000 * 60);
 
     // If the last heartbeat was less than 5 minutes ago, consider it online.
-    if (diffInMinutes < 5) {
-      setIsConnected(true);
-    } else {
-      setIsConnected(false);
-    }
+    setIsConnected(diffInMinutes < 5);
   }, [lastHeartbeat]);
 
 
@@ -72,7 +68,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-4">
           <Avatar className="h-10 w-10 border-2 border-primary-foreground/50">
             <AvatarImage src="https://picsum.photos/seed/user/40/40" alt="User Avatar" data-ai-hint="user avatar" />
-            <AvatarFallback>AMS</AvatarFallback>
+            <AvatarFallback className="text-white">AMS</AvatarFallback>
           </Avatar>
         </div>
       </div>
