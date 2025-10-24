@@ -30,7 +30,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const initialMetrics: DeriveMetricsOutput = {
   power: 1198.6,
-  inverterStatus: 'Online',
   batteryHealth: 92,
   batteryState: 'Charging',
   timeToFull: '1h 25m',
@@ -163,24 +162,6 @@ export default function Page() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Inverter Status</CardTitle>
-            <Info className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loading ? <Skeleton className="h-8 w-24" /> : (
-              <div className="flex items-center gap-2">
-                  <span className="relative flex h-3 w-3">
-                      <span className={`absolute inline-flex h-full w-full rounded-full ${metrics.inverterStatus === 'Online' ? 'bg-green-400' : 'bg-red-400'} opacity-75`}></span>
-                      <span className={`relative inline-flex rounded-full h-3 w-3 ${metrics.inverterStatus === 'Online' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                  </span>
-                  <span className="text-lg font-semibold">{metrics.inverterStatus}</span>
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground">Real-time state</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Battery Health</CardTitle>
             <Battery className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -279,7 +260,3 @@ export default function Page() {
     </div>
   );
 }
-
-    
-
-    

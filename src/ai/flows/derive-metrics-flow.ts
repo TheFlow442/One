@@ -28,7 +28,6 @@ type InternalPromptInput = z.infer<typeof InternalPromptInputSchema>;
 
 const DeriveMetricsOutputSchema = z.object({
   power: z.number().describe('Calculated power in Watts (Voltage * Current).'),
-  inverterStatus: z.enum(['Online', 'Offline', 'Error']).describe("The operational status of the inverter. Should be 'Online' if power is being generated, 'Offline' if not, and 'Error' if readings are anomalous (e.g., very high temperature)."),
   batteryHealth: z.number().min(0).max(100).describe("The estimated health of the battery as a percentage. Base it on temperature; optimal health is between 15-25°C. Health degrades significantly outside this range."),
   batteryState: z.enum(['Charging', 'Discharging', 'Idle']).describe("The current state of the battery. 'Charging' if current is positive, 'Discharging' if negative, and 'Idle' if zero."),
   timeToFull: z.string().describe("An estimated time to fully charge the battery, formatted as 'Xh Ym'. If not charging, this should be '--'. The AI should reason about a standard battery capacity (e.g., 5kWh) to make an estimation based on the current charging rate (power)."),
@@ -56,7 +55,6 @@ const deriveMetricsPrompt = ai.definePrompt({
 
     Your task is to analyze this data and return a structured JSON object with the derived metrics as defined in the output schema.
     - The 'power' value is already calculated for you. Include it in your output.
-    - Determine inverter status based on power and potential anomalies.
     - Estimate battery health based on temperature.
     - Determine battery state from the current's direction.
     - Estimate time-to-full if the battery is charging, assuming a standard 5kWh battery capacity for your calculation.
