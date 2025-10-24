@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -73,8 +72,8 @@ export default function Page() {
     // Fetch metrics immediately on load
     getMetrics();
     
-    // Set up an interval to refresh the data every 5 seconds
-    const intervalId = setInterval(getMetrics, 5000);
+    // Set up an interval to refresh the data every 3 seconds
+    const intervalId = setInterval(getMetrics, 3000);
 
     // Clean up the interval on component unmount
     return () => clearInterval(intervalId);
