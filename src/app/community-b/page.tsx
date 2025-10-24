@@ -1,6 +1,4 @@
 
-'use client';
-
 import {
   Card,
   CardContent,
@@ -21,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { CommunityConsumptionGenerationChart } from '@/components/dashboard/community-consumption-generation-chart';
 import { Users, Zap, User, AlertTriangle, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 const communityNodes = [
   { id: 'NODE-B01', status: 'online', load: 1.1, household: 'Davis' },
@@ -156,8 +155,10 @@ export default function CommunityBPage() {
                             <Badge variant={alert.level as "default" | "destructive" | "secondary" | "outline" | null | undefined}>{alert.level}</Badge>
                         </div>
                     ))}
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" asChild>
+                      <Link href="/alerts">
                         View All Alerts <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
                     </Button>
                 </CardContent>
             </Card>
