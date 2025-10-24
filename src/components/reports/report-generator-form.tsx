@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarIcon, Download } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import {
@@ -17,7 +17,12 @@ import {
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
-export function ReportGeneratorForm() {
+interface ReportGeneratorFormProps {
+  onGenerate: () => void;
+  isLoading: boolean;
+}
+
+export function ReportGeneratorForm({ onGenerate, isLoading }: ReportGeneratorFormProps) {
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
 
@@ -41,6 +46,7 @@ export function ReportGeneratorForm() {
                     'w-full justify-start text-left font-normal',
                     !startDate && 'text-muted-foreground'
                   )}
+                  disabled={isLoading}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {startDate ? format(startDate, 'PPP') : <span>dd/mm/yyyy</span>}
@@ -67,6 +73,7 @@ export function ReportGeneratorForm() {
                     'w-full justify-start text-left font-normal',
                     !endDate && 'text-muted-foreground'
                   )}
+                  disabled={isLoading}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {endDate ? format(endDate, 'PPP') : <span>dd/mm/yyyy</span>}
@@ -87,33 +94,43 @@ export function ReportGeneratorForm() {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="community">Community</Label>
-            <Select>
+            <Select disabled={isLoading}>
               <SelectTrigger id="community">
                 <SelectValue placeholder="Community (A/B/C or All)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="a">Community A</SelectItem>
-                <SelectItem value="b">Community B</SelectItem>
-                <SelectItem value="c">Community C</SelectItem>
+                <SelectItem value="all">All (Last 14 days)</SelectItem>
+                <SelectItem value="a" disabled>Community A (coming soon)</SelectItem>
+                <SelectItem value="b" disabled>Community B (coming soon)</SelectItem>
+                <SelectItem value="c" disabled>Community C (coming soon)</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="format">Format</Label>
-            <Select>
+            <Select disabled={isLoading}>
               <SelectTrigger id="format">
-                <SelectValue placeholder="Format (CSV/PDF)" />
+                <SelectValue placeholder="Format (AI Summary)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="csv">CSV</SelectItem>
-                <SelectItem value="pdf">PDF</SelectItem>
+                <SelectItem value="ai">AI Summary</SelectItem>
+                <SelectItem value="csv" disabled>CSV (coming soon)</SelectItem>
+                <SelectItem value="pdf" disabled>PDF (coming soon)</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        <Button className="w-full">Generate</Button>
+        <Button className="w-full" onClick={onGenerate} disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            'Generate'
+          )}
+        </Button>
       </CardContent>
     </Card>
   );
