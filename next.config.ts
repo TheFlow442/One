@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -23,13 +24,16 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'https',
+        protocol: 'https://',
         hostname: 'picsum.photos',
         port: '',
         pathname: '/**',
       },
     ],
   },
+  env: {
+    NEXT_PUBLIC_IS_GEMINI_API_KEY_SET: String(!!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'YOUR_API_KEY_HERE'),
+  }
 };
 
 export default nextConfig;

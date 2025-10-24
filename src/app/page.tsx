@@ -38,6 +38,9 @@ const initialMetrics: DeriveMetricsOutput = {
   maintenanceAlerts: [],
 };
 
+// This is a server-side check that gets passed to the client
+const isApiKeySet = process.env.NEXT_PUBLIC_IS_GEMINI_API_KEY_SET === 'true';
+
 export default function Page() {
   const { user } = useUser();
   const [metrics, setMetrics] = useState<DeriveMetricsOutput>(initialMetrics);
@@ -48,7 +51,6 @@ export default function Page() {
 
   useEffect(() => {
     const getMetrics = async () => {
-      // Use a fixed set of sensor data for a static display
       const sensorData: DeriveMetricsInput = {
         voltage: 230.5,
         current: 5.2,
@@ -59,21 +61,28 @@ export default function Page() {
       
       setLoading(true);
       setError(null);
+
+      if (!isApiKeySet) {
+        setError('Please set your Gemini API key in the .env file to see AI-powered metrics.');
+        setMetrics(initialMetrics);
+        setLoading(false);
+        return;
+      }
+      
       try {
         const result = await deriveMetrics(sensorData);
         setMetrics(result);
-      } catch (e) {
+      } catch (e: any) {
         console.error(e);
-        setError('Failed to derive metrics. Please try again.');
+        setError(e.message || 'Failed to derive metrics. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
-    // Fetch metrics only once on component mount
     getMetrics();
     
-  }, []); // Empty dependency array ensures this runs only once
+  }, []);
 
   return (
     <div className="flex flex-col gap-6">
@@ -151,7 +160,7 @@ export default function Page() {
             {loading ? <Skeleton className="h-8 w-24" /> : (
               <div className="flex items-center gap-2">
                   <span className="relative flex h-3 w-3">
-                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${metrics.inverterStatus === 'Online' ? 'bg-green-400' : 'bg-red-400'} opacity-75`}></span>
+                      <span className={`absolute inline-flex h-full w-full rounded-full ${metrics.inverterStatus === 'Online' ? 'bg-green-400' : 'bg-red-400'} opacity-75`}></span>
                       <span className={`relative inline-flex rounded-full h-3 w-3 ${metrics.inverterStatus === 'Online' ? 'bg-green-500' : 'bg-red-500'}`}></span>
                   </span>
                   <span className="text-lg font-semibold">{metrics.inverterStatus}</span>
@@ -239,7 +248,10 @@ export default function Page() {
                 </div>
               ))
             ) : error ? (
-                <p className='text-destructive text-sm'>{error}</p>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <AlertTriangle className="h-5 w-5 text-destructive/80" />
+                    <p className='text-destructive text-sm font-medium'>{error}</p>
+                </div>
             ) : metrics.maintenanceAlerts.length > 0 ? (
               metrics.maintenanceAlerts.map((alert) => (
                 <div key={alert.id} className="flex items-center justify-between p-3 rounded-lg bg-card border">
