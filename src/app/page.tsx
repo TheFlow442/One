@@ -27,7 +27,6 @@ import { BatteryStateChart } from '@/components/dashboard/battery-state-chart';
 import { useUser } from '@/firebase/provider';
 import { deriveMetrics, DeriveMetricsInput, DeriveMetricsOutput } from '@/ai/flows/derive-metrics-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ApiKeySetup } from '@/components/dashboard/api-key-setup';
 
 const initialMetrics: DeriveMetricsOutput = {
   power: 1198.6,
@@ -79,7 +78,9 @@ export default function Page() {
         setIsLive(true); // Set live status on successful fetch
       } catch (e: any) {
         console.error(e);
-        // We'll show the API key error in the dedicated component now.
+        // Fallback to initial metrics on error
+        setMetrics(initialMetrics);
+        setIsLive(false);
       } finally {
         setLoading(false);
       }
@@ -122,8 +123,6 @@ export default function Page() {
         </CardHeader>
       </Card>
       
-      {!isApiKeySet && <ApiKeySetup />}
-
       {/* Metrics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -258,7 +257,7 @@ export default function Page() {
                   <Skeleton className="h-5 w-16" />
                 </div>
               ))
-            ) : isApiKeySet && metrics.maintenanceAlerts.length > 0 ? (
+            ) : metrics.maintenanceAlerts.length > 0 ? (
               metrics.maintenanceAlerts.map((alert) => (
                 <div key={alert.id} className="flex items-center justify-between p-3 rounded-lg bg-card border">
                   <div className="flex items-center gap-3">
@@ -272,7 +271,7 @@ export default function Page() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">{ isApiKeySet ? "No maintenance alerts at this time." : "Set your API key to view AI-powered maintenance alerts."}</p>
+              <p className="text-sm text-muted-foreground">No maintenance alerts at this time.</p>
             )}
           </CardContent>
         </Card>
@@ -280,5 +279,7 @@ export default function Page() {
     </div>
   );
 }
+
+    
 
     
