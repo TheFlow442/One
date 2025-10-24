@@ -27,6 +27,7 @@ import { BatteryStateChart } from '@/components/dashboard/battery-state-chart';
 import { useUser } from '@/firebase/provider';
 import { deriveMetrics, DeriveMetricsInput, DeriveMetricsOutput } from '@/ai/flows/derive-metrics-flow';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ApiKeySetup } from '@/components/dashboard/api-key-setup';
 
 const initialMetrics: DeriveMetricsOutput = {
   power: 1198.6,
@@ -46,9 +47,7 @@ export default function Page() {
   const [metrics, setMetrics] = useState<DeriveMetricsOutput>(initialMetrics);
   const [currentSensorData, setCurrentSensorData] = useState<DeriveMetricsInput | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   
-
   useEffect(() => {
     const getMetrics = async () => {
       const sensorData: DeriveMetricsInput = {
@@ -60,10 +59,8 @@ export default function Page() {
       setCurrentSensorData(sensorData);
       
       setLoading(true);
-      setError(null);
 
       if (!isApiKeySet) {
-        setError('Please set your Gemini API key in the .env file to see AI-powered metrics.');
         setMetrics(initialMetrics);
         setLoading(false);
         return;
@@ -74,7 +71,7 @@ export default function Page() {
         setMetrics(result);
       } catch (e: any) {
         console.error(e);
-        setError(e.message || 'Failed to derive metrics. Please try again.');
+        // We'll show the API key error in the dedicated component now.
       } finally {
         setLoading(false);
       }
@@ -112,6 +109,8 @@ export default function Page() {
           </Avatar>
         </CardHeader>
       </Card>
+      
+      {!isApiKeySet && <ApiKeySetup />}
 
       {/* Metrics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -247,12 +246,7 @@ export default function Page() {
                   <Skeleton className="h-5 w-16" />
                 </div>
               ))
-            ) : error ? (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                    <AlertTriangle className="h-5 w-5 text-destructive/80" />
-                    <p className='text-destructive text-sm font-medium'>{error}</p>
-                </div>
-            ) : metrics.maintenanceAlerts.length > 0 ? (
+            ) : isApiKeySet && metrics.maintenanceAlerts.length > 0 ? (
               metrics.maintenanceAlerts.map((alert) => (
                 <div key={alert.id} className="flex items-center justify-between p-3 rounded-lg bg-card border">
                   <div className="flex items-center gap-3">
@@ -266,7 +260,7 @@ export default function Page() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">No maintenance alerts at this time.</p>
+              <p className="text-sm text-muted-foreground">{ isApiKeySet ? "No maintenance alerts at this time." : "Set your API key to view AI-powered maintenance alerts."}</p>
             )}
           </CardContent>
         </Card>
