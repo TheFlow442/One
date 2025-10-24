@@ -10,7 +10,7 @@ const data = [{ name: 'Health', value: 92, fill: 'hsl(var(--primary))' }];
 
 export function BatteryStateChart() {
   return (
-    <ResponsiveContainer width="100%" height={150}>
+    <ResponsiveContainer width="100%" height={200}>
       <RadialBarChart
         innerRadius="70%"
         outerRadius="100%"
@@ -33,12 +33,21 @@ export function BatteryStateChart() {
         />
         <text
           x="50%"
-          y="75%"
+          y="70%"
           textAnchor="middle"
           dominantBaseline="middle"
-          className="text-3xl font-bold fill-foreground"
+          className="text-5xl font-bold fill-foreground"
         >
           {data[0].value}%
+        </text>
+         <text
+          x="50%"
+          y="95%"
+          textAnchor="middle"
+          dominantBaseline="middle"
+          className="text-xs fill-muted-foreground"
+        >
+          Voltage: 51.8V | Charge Rate: 0.4C | Health Index: 92%
         </text>
       </RadialBarChart>
     </ResponsiveContainer>

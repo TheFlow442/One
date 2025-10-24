@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Sidebar, SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Header } from "@/components/dashboard/header";
 import { SidebarNavContent } from "@/components/dashboard/sidebar-content";
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -24,23 +25,25 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${inter.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning={true}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-        >
-           <SidebarProvider>
-            <Sidebar collapsible="offcanvas">
-              <SidebarNavContent />
-            </Sidebar>
-            <SidebarInset>
-              <Header />
-              <main className="p-4 lg:p-6 bg-background flex-1">{children}</main>
-            </SidebarInset>
-          </SidebarProvider>
-          <Toaster />
-        </ThemeProvider>
+        <FirebaseClientProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <SidebarProvider>
+              <Sidebar collapsible="offcanvas">
+                <SidebarNavContent />
+              </Sidebar>
+              <SidebarInset>
+                <Header />
+                <main className="p-4 lg:p-6 bg-background flex-1">{children}</main>
+              </SidebarInset>
+            </SidebarProvider>
+            <Toaster />
+          </ThemeProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

@@ -17,15 +17,15 @@ export function CommunityDistributionChart() {
           dataKey="name"
           tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
           axisLine={{ stroke: 'hsl(var(--border))' }}
-          tickLine={{ stroke: 'hsl(var(--border))' }}
+          tickLine={false}
         />
         <YAxis 
           tickFormatter={(value) => `${value} kW`}
-          domain={[0, 9]}
+          domain={[0, 8]}
           ticks={[0, 4, 8]}
           tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
-          axisLine={{ stroke: 'hsl(var(--border))' }}
-          tickLine={{ stroke: 'hsl(var(--border))' }}
+          axisLine={false}
+          tickLine={false}
         />
         <Tooltip
           cursor={{ fill: 'hsl(var(--card))' }}
