@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -40,20 +41,23 @@ const initialMetrics: DeriveMetricsOutput = {
 export default function Page() {
   const { user } = useUser();
   const [metrics, setMetrics] = useState<DeriveMetricsOutput>(initialMetrics);
+  const [currentSensorData, setCurrentSensorData] = useState<DeriveMetricsInput | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Mocked sensor data
-  const sensorData: DeriveMetricsInput = {
-    voltage: 230.5,
-    current: 5.2,
-    temperature: 25.3,
-    ldr: 850,
-  };
 
   useEffect(() => {
     const getMetrics = async () => {
-      setLoading(true);
+      // Simulate live data from an ESP32
+      const sensorData: DeriveMetricsInput = {
+        voltage: 228 + Math.random() * 5, // Fluctuate between 228V and 233V
+        current: 4.5 + Math.random() * 1.5, // Fluctuate between 4.5A and 6.0A
+        temperature: 24 + Math.random() * 5, // Fluctuate between 24°C and 29°C
+        ldr: 800 + Math.random() * 223,   // Fluctuate between 800 and 1023
+      };
+      setCurrentSensorData(sensorData);
+      
+      if (loading) setLoading(true);
       setError(null);
       try {
         const result = await deriveMetrics(sensorData);
@@ -62,19 +66,20 @@ export default function Page() {
         console.error(e);
         setError('Failed to derive metrics. Please try again.');
       } finally {
-        setLoading(false);
+        if (loading) setLoading(false);
       }
     };
 
+    // Fetch metrics immediately on load
     getMetrics();
     
-    // Set up an interval to refresh the data every 30 seconds
-    const intervalId = setInterval(getMetrics, 30000);
+    // Set up an interval to refresh the data every 5 seconds
+    const intervalId = setInterval(getMetrics, 5000);
 
     // Clean up the interval on component unmount
     return () => clearInterval(intervalId);
 
-  }, []); // Using sensorData as a dependency would cause re-fetches if it were dynamic. Since it's static, we run once.
+  }, []); // Empty dependency array ensures this runs once on mount to set up the interval
 
   return (
     <div className="flex flex-col gap-6">
@@ -102,7 +107,7 @@ export default function Page() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{sensorData.voltage.toFixed(1)} V</div>}
+            {loading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.voltage.toFixed(1)} V</div>}
           </CardContent>
         </Card>
         <Card>
@@ -111,7 +116,7 @@ export default function Page() {
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{sensorData.current.toFixed(2)} A</div>}
+            {loading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.current.toFixed(2)} A</div>}
           </CardContent>
         </Card>
         <Card>
@@ -129,7 +134,7 @@ export default function Page() {
             <Thermometer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{sensorData.temperature.toFixed(1)} °C</div>}
+             {loading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.temperature.toFixed(1)} °C</div>}
           </CardContent>
         </Card>
         <Card>
