@@ -33,7 +33,7 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             <SidebarProvider>
-              <Sidebar collapsible="offcanvas">
+              <Sidebar collapsible="icon">
                 <SidebarNavContent />
               </Sidebar>
               <SidebarInset>
