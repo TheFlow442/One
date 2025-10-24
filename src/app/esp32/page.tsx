@@ -14,14 +14,13 @@ export default function ESP32Page() {
   const identityEndpoint = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
 
   const payloadExample = `{
-    "fields": {
-        "timestamp": {
-            "timestampValue": "2024-08-15T10:00:00Z"
-        },
-        "sensorValue": {
-            "doubleValue": 230.5
-        }
-    }
+  "fields": {
+    "voltage": { "doubleValue": 230.5 },
+    "current": { "doubleValue": 5.2 },
+    "temperature": { "doubleValue": 28.5 },
+    "ldr": { "integerValue": 950 },
+    "timestamp": { "timestampValue": "2024-08-15T10:00:00Z" }
+  }
 }`;
 
   return (
@@ -85,7 +84,7 @@ export default function ESP32Page() {
             <div className="space-y-2">
                 <Label>Example JSON Payload</Label>
                 <CodeBlock language="json" code={payloadExample} />
-                <p className="text-sm text-muted-foreground">This is the structure of the JSON body for your `POST` request to the Firestore endpoint.</p>
+                <p className="text-sm text-muted-foreground">This is the structure of the JSON body for your `POST` request. The app uses these values to derive all the metrics on your dashboard.</p>
             </div>
         </CardContent>
       </Card>
