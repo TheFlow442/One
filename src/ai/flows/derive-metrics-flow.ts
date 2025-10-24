@@ -19,6 +19,13 @@ const DeriveMetricsInputSchema = z.object({
 });
 export type DeriveMetricsInput = z.infer<typeof DeriveMetricsInputSchema>;
 
+// Internal schema that includes the pre-calculated power
+const InternalPromptInputSchema = DeriveMetricsInputSchema.extend({
+    power: z.number().describe('Calculated power in Watts (Voltage * Current).'),
+});
+type InternalPromptInput = z.infer<typeof InternalPromptInputSchema>;
+
+
 const DeriveMetricsOutputSchema = z.object({
   power: z.number().describe('Calculated power in Watts (Voltage * Current).'),
   inverterStatus: z.enum(['Online', 'Offline', 'Error']).describe("The operational status of the inverter. Should be 'Online' if power is being generated, 'Offline' if not, and 'Error' if readings are anomalous (e.g., very high temperature)."),
@@ -36,18 +43,19 @@ export type DeriveMetricsOutput = z.infer<typeof DeriveMetricsOutputSchema>;
 
 const deriveMetricsPrompt = ai.definePrompt({
     name: 'deriveMetricsPrompt',
-    input: { schema: DeriveMetricsInputSchema },
+    input: { schema: InternalPromptInputSchema },
     output: { schema: DeriveMetricsOutputSchema },
     prompt: `You are an expert microgrid analyst. Based on the following real-time sensor data, derive the specified output metrics.
 
     Sensor Data:
     - Voltage: {{{voltage}}} V
     - Current: {{{current}}} A
+    - Power: {{{power}}} W
     - Temperature: {{{temperature}}} °C
     - LDR Reading: {{{ldr}}}
 
     Your task is to analyze this data and return a structured JSON object with the derived metrics as defined in the output schema.
-    - Calculate power.
+    - The 'power' value is already calculated for you. Include it in your output.
     - Determine inverter status based on power and potential anomalies.
     - Estimate battery health based on temperature.
     - Determine battery state from the current's direction.
@@ -64,10 +72,23 @@ const deriveMetricsFlow = ai.defineFlow(
     outputSchema: DeriveMetricsOutputSchema,
   },
   async (input) => {
-    const { output } = await deriveMetricsPrompt(input);
+    // Calculate power deterministically.
+    const power = input.voltage * input.current;
+    
+    // Create the input for the AI prompt, including the calculated power.
+    const promptInput: InternalPromptInput = {
+      ...input,
+      power: power,
+    };
+
+    const { output } = await deriveMetricsPrompt(promptInput);
     if (!output) {
       throw new Error('Failed to get derived metrics from AI.');
     }
+
+    // Ensure the output power is the one we calculated, overriding any AI hallucination.
+    output.power = power;
+
     return output;
   }
 );
