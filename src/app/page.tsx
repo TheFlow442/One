@@ -29,12 +29,12 @@ import { deriveMetrics, DeriveMetricsInput, DeriveMetricsOutput } from '@/ai/flo
 import { Skeleton } from '@/components/ui/skeleton';
 
 const initialMetrics: DeriveMetricsOutput = {
-  power: 0,
-  inverterStatus: 'Offline',
-  batteryHealth: 0,
-  batteryState: 'Idle',
+  power: 1198.6,
+  inverterStatus: 'Online',
+  batteryHealth: 92,
+  batteryState: 'Charging',
   timeToFull: '--',
-  solarIrradiance: 0,
+  solarIrradiance: 928,
   maintenanceAlerts: [],
 };
 
