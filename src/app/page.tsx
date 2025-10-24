@@ -48,16 +48,16 @@ export default function Page() {
 
   useEffect(() => {
     const getMetrics = async () => {
-      // Simulate live data from an ESP32
+      // Use a fixed set of sensor data for a static display
       const sensorData: DeriveMetricsInput = {
-        voltage: 228 + Math.random() * 5, // Fluctuate between 228V and 233V
-        current: 4.5 + Math.random() * 1.5, // Fluctuate between 4.5A and 6.0A
-        temperature: 24 + Math.random() * 5, // Fluctuate between 24°C and 29°C
-        ldr: 800 + Math.random() * 223,   // Fluctuate between 800 and 1023
+        voltage: 230.5,
+        current: 5.2,
+        temperature: 26.5,
+        ldr: 950,
       };
       setCurrentSensorData(sensorData);
       
-      if (loading) setLoading(true);
+      setLoading(true);
       setError(null);
       try {
         const result = await deriveMetrics(sensorData);
@@ -66,20 +66,14 @@ export default function Page() {
         console.error(e);
         setError('Failed to derive metrics. Please try again.');
       } finally {
-        if (loading) setLoading(false);
+        setLoading(false);
       }
     };
 
-    // Fetch metrics immediately on load
+    // Fetch metrics only once on component mount
     getMetrics();
     
-    // Set up an interval to refresh the data every 3 seconds
-    const intervalId = setInterval(getMetrics, 3000);
-
-    // Clean up the interval on component unmount
-    return () => clearInterval(intervalId);
-
-  }, []); // Empty dependency array ensures this runs once on mount to set up the interval
+  }, []); // Empty dependency array ensures this runs only once
 
   return (
     <div className="flex flex-col gap-6">
