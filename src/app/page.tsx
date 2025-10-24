@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -9,11 +10,8 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
-  Activity,
   AlertTriangle,
   Battery,
-  BatteryCharging,
-  Gauge,
   Info,
   Power,
   Sun,
@@ -26,26 +24,57 @@ import { CommunityDistributionChart } from '@/components/dashboard/community-dis
 import { Badge } from '@/components/ui/badge';
 import { BatteryStateChart } from '@/components/dashboard/battery-state-chart';
 import { useUser } from '@/firebase/provider';
+import { deriveMetrics, DeriveMetricsInput, DeriveMetricsOutput } from '@/ai/flows/derive-metrics-flow';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const initialMetrics: DeriveMetricsOutput = {
+  power: 0,
+  inverterStatus: 'Offline',
+  batteryHealth: 0,
+  batteryState: 'Idle',
+  timeToFull: '--',
+  solarIrradiance: 0,
+  maintenanceAlerts: [],
+};
 
 export default function Page() {
   const { user } = useUser();
-  const maintenanceAlerts = [
-    {
-      id: 1,
-      title: 'Transient voltage spike',
-      description: 'Edge node detected spike',
-    },
-    {
-      id: 2,
-      title: 'Transient voltage spike',
-      description: 'Edge node detected spike',
-    },
-    {
-      id: 3,
-      title: 'Transient voltage spike',
-      description: 'Edge node detected spike',
-    },
-  ];
+  const [metrics, setMetrics] = useState<DeriveMetricsOutput>(initialMetrics);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Mocked sensor data
+  const sensorData: DeriveMetricsInput = {
+    voltage: 230.5,
+    current: 5.2,
+    temperature: 25.3,
+    ldr: 850,
+  };
+
+  useEffect(() => {
+    const getMetrics = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await deriveMetrics(sensorData);
+        setMetrics(result);
+      } catch (e) {
+        console.error(e);
+        setError('Failed to derive metrics. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getMetrics();
+    
+    // Set up an interval to refresh the data every 30 seconds
+    const intervalId = setInterval(getMetrics, 30000);
+
+    // Clean up the interval on component unmount
+    return () => clearInterval(intervalId);
+
+  }, []); // Using sensorData as a dependency would cause re-fetches if it were dynamic. Since it's static, we run once.
 
   return (
     <div className="flex flex-col gap-6">
@@ -73,7 +102,7 @@ export default function Page() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">230.5 V</div>
+            {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{sensorData.voltage.toFixed(1)} V</div>}
           </CardContent>
         </Card>
         <Card>
@@ -82,7 +111,7 @@ export default function Page() {
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5.20 A</div>
+            {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{sensorData.current.toFixed(2)} A</div>}
           </CardContent>
         </Card>
         <Card>
@@ -91,7 +120,7 @@ export default function Page() {
             <Power className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1199 W</div>
+            {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{metrics.power.toFixed(0)} W</div>}
           </CardContent>
         </Card>
         <Card>
@@ -100,7 +129,7 @@ export default function Page() {
             <Thermometer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">25.3 °C</div>
+             {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{sensorData.temperature.toFixed(1)} °C</div>}
           </CardContent>
         </Card>
         <Card>
@@ -109,13 +138,15 @@ export default function Page() {
             <Info className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-                <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                </span>
-                <span className="text-lg font-semibold">Online</span>
-            </div>
+            {loading ? <Skeleton className="h-8 w-24" /> : (
+              <div className="flex items-center gap-2">
+                  <span className="relative flex h-3 w-3">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${metrics.inverterStatus === 'Online' ? 'bg-green-400' : 'bg-red-400'} opacity-75`}></span>
+                      <span className={`relative inline-flex rounded-full h-3 w-3 ${metrics.inverterStatus === 'Online' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  </span>
+                  <span className="text-lg font-semibold">{metrics.inverterStatus}</span>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">Real-time state</p>
           </CardContent>
         </Card>
@@ -125,8 +156,8 @@ export default function Page() {
             <Battery className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">100.0 %</div>
-            <p className="text-xs text-muted-foreground">Discharging</p>
+            {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{metrics.batteryHealth.toFixed(1)} %</div>}
+            <p className="text-xs text-muted-foreground">{metrics.batteryState}</p>
           </CardContent>
         </Card>
         <Card>
@@ -135,8 +166,8 @@ export default function Page() {
             <Info className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">--</div>
-            <p className="text-xs text-muted-foreground">Not charging</p>
+            {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{metrics.timeToFull}</div>}
+            <p className="text-xs text-muted-foreground">{metrics.batteryState === 'Charging' ? 'Charging' : 'Not charging'}</p>
           </CardContent>
         </Card>
         <Card>
@@ -145,7 +176,7 @@ export default function Page() {
             <Sun className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">850 <span className='text-lg'>W/m²</span></div>
+            {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{metrics.solarIrradiance.toFixed(0)} <span className='text-lg'>W/m²</span></div>}
             <p className="text-xs text-muted-foreground">Insolation level</p>
           </CardContent>
         </Card>
@@ -158,7 +189,7 @@ export default function Page() {
         </CardContent>
       </Card>
 
-      {/* Community Distribution & Battery State */}
+      {/* Community Distribution & Battery State & Predictive Maintenance */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
@@ -184,18 +215,37 @@ export default function Page() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {maintenanceAlerts.map((alert) => (
-              <div key={alert.id} className="flex items-center justify-between p-3 rounded-lg bg-card border">
-                <div className="flex items-center gap-3">
-                  <AlertTriangle className="h-5 w-5 text-destructive/80" />
-                  <div>
-                    <p className="font-semibold text-sm">{alert.title}</p>
-                    <p className="text-xs text-muted-foreground">{alert.description}</p>
+             {loading ? (
+              Array.from({ length: 2 }).map((_, index) => (
+                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-card border">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-5 w-5 rounded-full" />
+                    <div className='space-y-2'>
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-40" />
+                    </div>
                   </div>
+                  <Skeleton className="h-5 w-16" />
                 </div>
-                <Badge variant="destructive">warning</Badge>
-              </div>
-            ))}
+              ))
+            ) : error ? (
+                <p className='text-destructive text-sm'>{error}</p>
+            ) : metrics.maintenanceAlerts.length > 0 ? (
+              metrics.maintenanceAlerts.map((alert) => (
+                <div key={alert.id} className="flex items-center justify-between p-3 rounded-lg bg-card border">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-destructive/80" />
+                    <div>
+                      <p className="font-semibold text-sm">{alert.title}</p>
+                      <p className="text-xs text-muted-foreground">{alert.description}</p>
+                    </div>
+                  </div>
+                  <Badge variant="destructive">warning</Badge>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No maintenance alerts at this time.</p>
+            )}
           </CardContent>
         </Card>
       </div>
