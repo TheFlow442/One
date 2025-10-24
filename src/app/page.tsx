@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -86,7 +87,18 @@ export default function Page() {
       <Card className="bg-primary text-primary-foreground">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-2xl">Smart Solar Microgrid Management</CardTitle>
+            <div className="flex items-center gap-4">
+              <CardTitle className="text-2xl">Smart Solar Microgrid Management</CardTitle>
+              {!loading && (
+                <Badge variant="outline" className="border-green-400 bg-green-400/10 text-green-300">
+                  <span className="relative flex h-2 w-2 mr-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  Live
+                </Badge>
+              )}
+            </div>
             <CardDescription className="text-primary-foreground/80">
               Monitor your solar system in real-time
             </CardDescription>
