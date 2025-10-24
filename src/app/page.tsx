@@ -34,7 +34,7 @@ const initialMetrics: DeriveMetricsOutput = {
   inverterStatus: 'Online',
   batteryHealth: 92,
   batteryState: 'Charging',
-  timeToFull: '--',
+  timeToFull: '1h 25m',
   solarIrradiance: 928,
   maintenanceAlerts: [],
 };
@@ -42,22 +42,29 @@ const initialMetrics: DeriveMetricsOutput = {
 // This is a server-side check that gets passed to the client
 const isApiKeySet = process.env.NEXT_PUBLIC_IS_GEMINI_API_KEY_SET === 'true';
 
+// Function to generate randomized sensor data
+const generateMockSensorData = (): DeriveMetricsInput => {
+  const voltage = 228 + Math.random() * 5; // 228V - 233V
+  const current = 4.8 + Math.random() * 0.8; // 4.8A - 5.6A
+  const temperature = 25 + Math.random() * 5; // 25°C - 30°C
+  const ldr = 900 + Math.floor(Math.random() * 124); // 900 - 1023
+  return { voltage, current, temperature, ldr };
+};
+
+
 export default function Page() {
   const { user } = useUser();
   const [metrics, setMetrics] = useState<DeriveMetricsOutput>(initialMetrics);
   const [currentSensorData, setCurrentSensorData] = useState<DeriveMetricsInput | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLive, setIsLive] = useState(false);
   
   useEffect(() => {
     const getMetrics = async () => {
-      const sensorData: DeriveMetricsInput = {
-        voltage: 230.5,
-        current: 5.2,
-        temperature: 26.5,
-        ldr: 950,
-      };
+      const sensorData = generateMockSensorData();
       setCurrentSensorData(sensorData);
       
+      setIsLive(false); // Reset live status before new fetch
       setLoading(true);
 
       if (!isApiKeySet) {
@@ -69,6 +76,7 @@ export default function Page() {
       try {
         const result = await deriveMetrics(sensorData);
         setMetrics(result);
+        setIsLive(true); // Set live status on successful fetch
       } catch (e: any) {
         console.error(e);
         // We'll show the API key error in the dedicated component now.
@@ -77,7 +85,11 @@ export default function Page() {
       }
     };
 
-    getMetrics();
+    getMetrics(); // Initial call
+    
+    const interval = setInterval(getMetrics, 3000); // Refresh every 3 seconds
+
+    return () => clearInterval(interval); // Cleanup on unmount
     
   }, []);
 
@@ -89,7 +101,7 @@ export default function Page() {
           <div>
             <div className="flex items-center gap-4">
               <CardTitle className="text-2xl">Smart Solar Microgrid Management</CardTitle>
-              {!loading && (
+              {isLive && (
                 <Badge variant="outline" className="border-green-400 bg-green-400/10 text-green-300">
                   <span className="relative flex h-2 w-2 mr-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -268,3 +280,5 @@ export default function Page() {
     </div>
   );
 }
+
+    
