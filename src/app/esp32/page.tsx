@@ -28,7 +28,7 @@ export default function ESP32Page() {
       case 'C':
         userEmail = 'user3@volta.view';
         userPassword = 'password123';
-        userId = `REPLACE_WITH_UID_FOR_${userEmail}`;
+        userId = '7yV6eXu6A1ReAXdtqOVMWszmiOD2';
         break;
     }
 
@@ -56,7 +56,7 @@ const char* WIFI_PASSWORD = "987654321";
 // This should be the user dedicated to Community ${community}
 const char* FIREBASE_USER_EMAIL = "${userEmail}";
 const char* FIREBASE_USER_PASSWORD = "${userPassword}";
-const char* USER_ID = "${userId}"; // <-- IMPORTANT: REPLACE THIS if needed
+const char* USER_ID = "${userId}"; // <-- This UID is for ${userEmail}
 
 // These are specific to your Firebase project
 const char* WEB_API_KEY = "${apiKey}";
@@ -239,7 +239,7 @@ String getTimestamp() {
         <ShieldCheck className="h-4 w-4" />
         <AlertTitle>Important: Create Users in Firebase</AlertTitle>
         <AlertDescription>
-          This guide provides separate code for each community. You must first create three corresponding users in your Firebase project's Authentication section. Then, replace the placeholder UID in each code snippet with the actual UID for that user.
+          This guide provides separate code for each community. You must first create three corresponding users in your Firebase project's Authentication section. The UIDs in the code snippets must match the UIDs for the users you create.
         </AlertDescription>
       </Alert>
 
@@ -269,7 +269,7 @@ String getTimestamp() {
             <CardHeader>
               <CardTitle>ESP32 Code for Community B</CardTitle>
               <CardDescription>
-                 This Arduino sketch is pre-configured for Community B. Replace the placeholder UID with the one for user2@volta.view.
+                 This Arduino sketch is pre-configured for Community B. Ensure the UID matches the one for user2@volta.view.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -283,7 +283,7 @@ String getTimestamp() {
             <CardHeader>
               <CardTitle>ESP32 Code for Community C</CardTitle>
               <CardDescription>
-                This Arduino sketch is pre-configured for Community C. Replace the placeholder UID with the one for user3@volta.view.
+                This Arduino sketch is pre-configured for Community C. Ensure the UID matches the one for user3@volta.view.
               </CardDescription>
             </CardHeader>
             <CardContent>
