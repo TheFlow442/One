@@ -23,7 +23,7 @@ export default function ESP32Page() {
       case 'B':
         userEmail = 'user2@volta.view';
         userPassword = 'password123';
-        userId = `REPLACE_WITH_UID_FOR_${userEmail}`;
+        userId = 'F0jfqt20cPXSqJ2nsJeZtseO1qn2';
         break;
       case 'C':
         userEmail = 'user3@volta.view';
