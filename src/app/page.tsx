@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -24,45 +24,47 @@ import { SolarGenerationChart } from '@/components/dashboard/solar-generation-ch
 import { CommunityDistributionChart } from '@/components/dashboard/community-distribution-chart';
 import { Badge } from '@/components/ui/badge';
 import { BatteryStateChart } from '@/components/dashboard/battery-state-chart';
-import { useUser } from '@/firebase/provider';
+import { useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { deriveMetrics, DeriveMetricsInput, DeriveMetricsOutput } from '@/ai/flows/derive-metrics-flow';
 import { Skeleton } from '@/components/ui/skeleton';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
+
 
 const initialMetrics: DeriveMetricsOutput = {
-  power: 1198.6,
-  batteryHealth: 92,
-  batteryState: 'Charging',
-  timeToFull: '1h 25m',
-  solarIrradiance: 928,
+  power: 0,
+  batteryHealth: 0,
+  batteryState: 'Idle',
+  timeToFull: '--',
+  solarIrradiance: 0,
   maintenanceAlerts: [],
 };
 
 // This is a server-side check that gets passed to the client
 const isApiKeySet = process.env.NEXT_PUBLIC_IS_GEMINI_API_KEY_SET === 'true';
 
-// Function to generate randomized sensor data
-const generateMockSensorData = (): DeriveMetricsInput => {
-  const voltage = 228 + Math.random() * 5; // 228V - 233V
-  const current = 4.8 + Math.random() * 0.8; // 4.8A - 5.6A
-  const temperature = 25 + Math.random() * 5; // 25°C - 30°C
-  const ldr = 900 + Math.floor(Math.random() * 124); // 900 - 1023
-  return { voltage, current, temperature, ldr };
-};
-
-
 export default function Page() {
   const { user } = useUser();
+  const firestore = useFirestore();
   const [metrics, setMetrics] = useState<DeriveMetricsOutput>(initialMetrics);
   const [currentSensorData, setCurrentSensorData] = useState<DeriveMetricsInput | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
-  
+
+  const espDataQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+      collection(firestore, 'users', user.uid, 'esp32_data'),
+      orderBy('timestamp', 'desc'),
+      limit(1)
+    );
+  }, [user, firestore]);
+
+  const { data: espData, isLoading: isEspDataLoading } = useCollection<any>(espDataQuery);
+
   useEffect(() => {
-    const getMetrics = async () => {
-      const sensorData = generateMockSensorData();
-      setCurrentSensorData(sensorData);
-      
-      setIsLive(false); // Reset live status before new fetch
+    const getMetrics = async (sensorData: DeriveMetricsInput) => {
+      setIsLive(false);
       setLoading(true);
 
       if (!isApiKeySet) {
@@ -74,24 +76,34 @@ export default function Page() {
       try {
         const result = await deriveMetrics(sensorData);
         setMetrics(result);
-        setIsLive(true); // Set live status on successful fetch
+        setIsLive(true);
       } catch (e: any) {
-        console.error(e);
-        // Fallback to initial metrics on error
+        console.error("Error deriving metrics:", e);
         setMetrics(initialMetrics);
         setIsLive(false);
       } finally {
         setLoading(false);
       }
     };
-
-    getMetrics(); // Initial call
     
-    const interval = setInterval(getMetrics, 3000); // Refresh every 3 seconds
+    if (espData && espData.length > 0) {
+      const latestData = espData[0];
+      const sensorInput: DeriveMetricsInput = {
+        voltage: latestData.voltage || 0,
+        current: latestData.current || 0,
+        temperature: latestData.temperature || 0,
+        ldr: latestData.ldr || 0,
+      };
+      setCurrentSensorData(sensorInput);
+      getMetrics(sensorInput);
+    } else if (!isEspDataLoading) {
+      setLoading(false);
+      setCurrentSensorData(null);
+      setMetrics(initialMetrics);
+    }
 
-    return () => clearInterval(interval); // Cleanup on unmount
-    
-  }, []);
+  }, [espData, isEspDataLoading]);
+
 
   return (
     <div className="flex flex-col gap-6">
@@ -122,6 +134,20 @@ export default function Page() {
         </CardHeader>
       </Card>
       
+       {!isEspDataLoading && !currentSensorData && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Waiting for Data</CardTitle>
+              <CardDescription>
+                No data has been received from your ESP32 yet. Please ensure your device is on and connected.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>Follow the <a href="/esp32" className="underline text-primary">ESP32 Connection Guide</a> to get started.</p>
+            </CardContent>
+          </Card>
+        )}
+
       {/* Metrics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -260,3 +286,5 @@ export default function Page() {
     </div>
   );
 }
+
+    
