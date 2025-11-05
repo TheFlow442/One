@@ -18,6 +18,7 @@ import {
   Sun,
   Thermometer,
   TrendingUp,
+  Users,
   Zap,
 } from 'lucide-react';
 import { SolarGenerationChart } from '@/components/dashboard/solar-generation-chart';
@@ -29,7 +30,14 @@ import { deriveMetrics, DeriveMetricsInput, DeriveMetricsOutput } from '@/ai/flo
 import { Skeleton } from '@/components/ui/skeleton';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+const communityUsers = {
+    'Community A': '0nkCeSiTQbcTEhEMcUhQwYT39U72',
+    'Community B': 'F0jfqt20cPXSqJ2nsJeZtseO1qn2',
+    'Community C': '7yV6eXu6A1ReAXdtqOVMWszmiOD2',
+};
+type Community = keyof typeof communityUsers;
 
 const initialMetrics: DeriveMetricsOutput = {
   power: 0,
@@ -50,15 +58,18 @@ export default function Page() {
   const [currentSensorData, setCurrentSensorData] = useState<DeriveMetricsInput | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
+  const [selectedCommunity, setSelectedCommunity] = useState<Community>('Community A');
+
+  const selectedUserId = communityUsers[selectedCommunity];
 
   const espDataQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
+    if (!selectedUserId || !firestore) return null;
     return query(
-      collection(firestore, 'users', user.uid, 'esp32_data'),
+      collection(firestore, 'users', selectedUserId, 'esp32_data'),
       orderBy('timestamp', 'desc'),
       limit(1)
     );
-  }, [user, firestore]);
+  }, [selectedUserId, firestore]);
 
   const { data: espData, isLoading: isEspDataLoading } = useCollection<any>(espDataQuery);
 
@@ -133,13 +144,32 @@ export default function Page() {
           </Avatar>
         </CardHeader>
       </Card>
+
+      <Card>
+        <CardHeader className='flex-row items-center justify-between'>
+            <div className="flex items-center gap-2">
+                <Users />
+                <CardTitle>Community Dashboard</CardTitle>
+            </div>
+            <Select onValueChange={(value: Community) => setSelectedCommunity(value)} defaultValue={selectedCommunity}>
+                <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Select a community" />
+                </SelectTrigger>
+                <SelectContent>
+                    {Object.keys(communityUsers).map(communityName => (
+                        <SelectItem key={communityName} value={communityName}>{communityName}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </CardHeader>
+      </Card>
       
        {!isEspDataLoading && !currentSensorData && (
           <Card>
             <CardHeader>
-              <CardTitle>Waiting for Data</CardTitle>
+              <CardTitle>Waiting for Data for {selectedCommunity}</CardTitle>
               <CardDescription>
-                No data has been received from your ESP32 yet. Please ensure your device is on and connected.
+                No data has been received for this community yet. Please ensure your ESP32 device is on, connected, and sending data for all three communities.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -286,5 +316,3 @@ export default function Page() {
     </div>
   );
 }
-
-    

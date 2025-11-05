@@ -100,12 +100,12 @@ void loop() {
     }
     
     // Brief delay before processing the next community
-    delay(5000); 
+    delay(2000); 
   }
   
   // Wait for a longer period before starting the next full cycle
   Serial.println("\\n=== Completed Full Cycle. Waiting... ===");
-  delay(30000); 
+  delay(10000); 
 }
 
 void connectToWiFi() {
@@ -245,5 +245,3 @@ void sendDataToFirestore(String& idToken, const char* userId) {
     </div>
   );
 }
-
-    
