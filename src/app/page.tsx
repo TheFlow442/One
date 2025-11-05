@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -54,7 +55,7 @@ export default function Page() {
   const firestore = useFirestore();
   const [metrics, setMetrics] = useState<Omit<DeriveMetricsOutput, 'power'>>(initialMetrics);
   const [currentSensorData, setCurrentSensorData] = useState<any>(null); // Using 'any' to accommodate new fields
-  const [loading, setLoading] = useState(true);
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [isLive, setIsLive] = useState(false);
   const [selectedCommunity, setSelectedCommunity] = useState<Community>('Community A');
 
@@ -72,83 +73,71 @@ export default function Page() {
   const { data: espData, isLoading: isEspDataLoading } = useCollection<any>(espDataQuery);
 
   useEffect(() => {
-    const getMetrics = async (sensorData: any) => {
-      setLoading(true);
-
-      if (!isApiKeySet) {
-        setMetrics(initialMetrics);
-        setLoading(false);
+    const processData = async () => {
+      if (isEspDataLoading) {
+        setLoadingMetrics(true);
         return;
       }
-
-      try {
-        const input: DeriveMetricsInput = {
-          communityId: selectedCommunity,
-          inverterV: sensorData.inverterV || 0,
-          inverterI: sensorData.inverterI || 0,
-          batteryV: sensorData.batteryV || 0,
-          batteryI: sensorData.batteryI || 0,
-          batteryTemp: sensorData.batteryTemp || 0,
-          irradiance: sensorData.irradiance || 0,
-        };
-        const result = await deriveMetrics(input);
-        const { power, ...restOfMetrics } = result;
-        setMetrics(restOfMetrics);
-      } catch (e: any) {
-        console.error("Error deriving metrics:", e);
+      
+      if (!espData || espData.length === 0) {
+        setIsLive(false);
+        setCurrentSensorData(null);
         setMetrics(initialMetrics);
-      } finally {
-        setLoading(false);
+        setLoadingMetrics(false);
+        return;
       }
-    };
-
-    if (espData && espData.length > 0) {
+      
       const latestData = espData[0];
       const now = new Date();
       const dataTimestamp = latestData.timestamp?.toDate();
       const isDataFresh = dataTimestamp && (now.getTime() - dataTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
 
+      setIsLive(isDataFresh);
+      
       if (isDataFresh) {
-        setIsLive(true);
         setCurrentSensorData(latestData);
-        getMetrics(latestData);
-      } else {
-        setIsLive(false);
-        setCurrentSensorData(null);
-        setMetrics(initialMetrics);
-        setLoading(false);
-      }
-    } else if (!isEspDataLoading) {
-      setIsLive(false);
-      setCurrentSensorData(null);
-      setMetrics(initialMetrics);
-      setLoading(false);
-    }
-
-    const intervalId = setInterval(() => {
-      if (espData && espData.length > 0) {
-        const latestData = espData[0];
-        const now = new Date();
-        const dataTimestamp = latestData.timestamp?.toDate();
-        if (!dataTimestamp || (now.getTime() - dataTimestamp.getTime()) / 1000 > LIVE_THRESHOLD_SECONDS) {
-          if (isLive) {
-            setIsLive(false);
-            setCurrentSensorData(null);
-            setMetrics(initialMetrics);
+        setLoadingMetrics(true); // Start loading for AI metrics
+        
+        if (isApiKeySet) {
+          try {
+            const input: DeriveMetricsInput = {
+              communityId: selectedCommunity,
+              inverterV: latestData.inverterV || 0,
+              inverterI: latestData.inverterI || 0,
+              batteryV: latestData.batteryV || 0,
+              batteryI: latestData.batteryI || 0,
+              batteryTemp: latestData.batteryTemp || 0,
+              irradiance: latestData.irradiance || 0,
+            };
+            const result = await deriveMetrics(input);
+            const { power, ...restOfMetrics } = result;
+            setMetrics(restOfMetrics);
+          } catch (e: any) {
+            console.error("Error deriving metrics:", e);
+            setMetrics(initialMetrics); // Reset on error
+          } finally {
+            setLoadingMetrics(false); // Stop loading after AI call
           }
+        } else {
+          setMetrics(initialMetrics); // Reset if API key not set
+          setLoadingMetrics(false);
         }
-      } else if (isLive) {
-        setIsLive(false);
+      } else {
+        // Data is stale
         setCurrentSensorData(null);
         setMetrics(initialMetrics);
+        setLoadingMetrics(false);
       }
-    }, 2500); // Check for staleness every 2.5 seconds
+    };
+    
+    processData();
 
-    return () => clearInterval(intervalId);
-  }, [espData, isEspDataLoading, selectedCommunity, isLive]);
+  }, [espData, isEspDataLoading, selectedCommunity]);
 
   const power = currentSensorData ? currentSensorData.totalPower : 0;
   const solarIrradiance = currentSensorData ? currentSensorData.irradiance : 0;
+
+  const isLoading = isEspDataLoading || loadingMetrics;
 
   return (
     <div className="flex flex-col gap-6">
@@ -197,21 +186,21 @@ export default function Page() {
           </Select>
         </CardHeader>
       </Card>
-
+      
       {isEspDataLoading && !currentSensorData && (
-        <Card>
+         <Card>
           <CardContent className="pt-6">
-            <p className="text-muted-foreground">Connecting to your ESP32 device...</p>
+            <p className="text-muted-foreground">Connecting to your ESP32 device for {selectedCommunity}...</p>
           </CardContent>
         </Card>
       )}
 
-      {!isEspDataLoading && !currentSensorData && !isLive && (
+      {!isEspDataLoading && !isLive && (
         <Card>
           <CardHeader>
             <CardTitle>Waiting for Data for {selectedCommunity}</CardTitle>
             <CardDescription>
-              No data has been received for this community yet, or the device is offline. Please ensure your ESP32 device is on, connected, and sending data.
+              No data has been received from the device recently. Please ensure your ESP32 device is on, connected, and sending data.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -222,8 +211,118 @@ export default function Page() {
 
       {/* Metrics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Cards omitted for brevity — all unchanged */}
-        {/* ... (everything inside metrics grid unchanged) ... */}
+       <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Power</CardTitle>
+            <Power className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
+              <>
+                <div className="text-2xl font-bold">{power.toFixed(2)} W</div>
+                <p className="text-xs text-muted-foreground">Total system output</p>
+              </>
+            }
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Solar Irradiance</CardTitle>
+            <Sun className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
+              <>
+                <div className="text-2xl font-bold">{solarIrradiance.toFixed(0)} W/m²</div>
+                <p className="text-xs text-muted-foreground">Current solar intensity</p>
+              </>
+            }
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Battery Health</CardTitle>
+            <Battery className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
+              <>
+                <div className="text-2xl font-bold">{metrics.batteryHealth.toFixed(0)}%</div>
+                <p className="text-xs text-muted-foreground">AI-estimated health index</p>
+              </>
+            }
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Voltage</CardTitle>
+            <Zap className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
+              <>
+                <div className="text-2xl font-bold">{(currentSensorData?.inverterV || 0).toFixed(2)} V</div>
+                <p className="text-xs text-muted-foreground">Live AC output</p>
+              </>
+            }
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Current</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
+              <>
+                <div className="text-2xl font-bold">{(currentSensorData?.inverterI || 0).toFixed(2)} A</div>
+                <p className="text-xs text-muted-foreground">Live AC current draw</p>
+              </>
+            }
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Temperature</CardTitle>
+            <Thermometer className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
+              <>
+                <div className="text-2xl font-bold">{(currentSensorData?.batteryTemp || 0).toFixed(1)} °C</div>
+                <p className="text-xs text-muted-foreground">Live battery temperature</p>
+              </>
+            }
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Battery State</CardTitle>
+            <Battery className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
+              <>
+                <div className="text-2xl font-bold">{metrics.batteryState}</div>
+                <p className="text-xs text-muted-foreground">{metrics.timeToFull} to full</p>
+              </>
+            }
+          </CardContent>
+        </Card>
+        <Card className="bg-destructive/10 border-destructive/30">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-destructive">Maintenance Alerts</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+             {isLoading ? <Skeleton className="h-8 w-24" /> :
+              <>
+                <div className="text-2xl font-bold">{metrics.maintenanceAlerts.length}</div>
+                <p className="text-xs text-destructive/80">Active AI-detected alerts</p>
+              </>
+            }
+          </CardContent>
+        </Card>
       </div>
 
       {/* Solar Generation Chart */}
@@ -254,4 +353,5 @@ export default function Page() {
       </div>
     </div>
   );
-}
+
+    
