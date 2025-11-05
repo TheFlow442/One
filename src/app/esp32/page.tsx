@@ -342,34 +342,43 @@ void sendDataToFirestore(String& idToken, const char* userId) {
 `;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-4">
-        <Cpu className="h-8 w-8" />
-        <div>
-          <h1 className="text-3xl font-bold">ESP32 Connection Guide</h1>
-          <p className="text-muted-foreground">
-            A single ESP32 sketch to send data for all three communities.
-          </p>
-        </div>
-      </div>
-      
-      <Alert>
-        <ShieldCheck className="h-4 w-4" />
-        <AlertTitle>Important: Single Device Configuration</AlertTitle>
-        <AlertDescription>
-          This sketch is designed to run on a single ESP32. It will cycle through each community's credentials, authenticating, and sending data sequentially. Remember to replace `DESKTOP` and `1234567890` with your actual network credentials.
-        </AlertDescription>
-      </Alert>
-
+    <div className="flex flex-col gap-8">
       <Card>
         <CardHeader>
-          <CardTitle>Unified ESP32 Code for All Communities</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Cpu /> ESP32 Connection Guide</CardTitle>
           <CardDescription>
-            This Arduino sketch is pre-configured with your advanced sensor setup, all user credentials, and NTP time synchronization for accurate timestamps. You will need the `ArduinoJson`, `EmonLib`, `OneWire`, and `DallasTemperature` libraries installed in your Arduino IDE.
+            Follow these steps to connect your ESP32 device and start sending data to the VoltaView dashboard.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <CodeBlock language="cpp" code={arduinoCode} />
+        <CardContent className="space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold">1. Hardware Requirements</h3>
+            <ul className="list-disc list-inside text-muted-foreground mt-2">
+              <li>ESP32 Development Board</li>
+              <li>Required sensors for voltage, current, and temperature</li>
+              <li>Breadboard and jumper wires</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">2. Software Setup</h3>
+            <ul className="list-disc list-inside text-muted-foreground mt-2">
+              <li>Install the Arduino IDE</li>
+              <li>Install the ESP32 board definitions</li>
+              <li>Install necessary libraries: <code className='bg-muted p-1 rounded-sm'>ArduinoJson</code>, <code className='bg-muted p-1 rounded-sm'>EmonLib</code>, <code className='bg-muted p-1 rounded-sm'>OneWire</code>, <code className='bg-muted p-1 rounded-sm'>DallasTemperature</code></li>
+            </ul>
+          </div>
+           <Alert>
+              <ShieldCheck className="h-4 w-4" />
+              <AlertTitle>Your Project Credentials</AlertTitle>
+              <AlertDescription>
+                The code below is pre-configured with your unique Firebase project ID and API key.
+              </AlertDescription>
+            </Alert>
+          <div>
+            <h3 className="text-lg font-semibold">3. Upload Firmware</h3>
+            <p className="text-muted-foreground">Copy and paste the code below into a new Arduino sketch, update your <code className="bg-muted p-1 rounded-sm">WIFI_SSID</code> and <code className="bg-muted p-1 rounded-sm">WIFI_PASSWORD</code>, and upload it to your ESP32.</p>
+          </div>
+          <CodeBlock code={arduinoCode} language="cpp" />
         </CardContent>
       </Card>
     </div>

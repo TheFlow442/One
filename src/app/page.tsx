@@ -147,7 +147,7 @@ export default function Page() {
 
     return () => clearInterval(intervalId);
 
-  }, [espData, isEspDataLoading, selectedCommunity]);
+  }, [espData, isEspDataLoading, selectedCommunity, isLive]);
 
   const power = currentSensorData ? currentSensorData.totalPower : 0;
   const solarIrradiance = currentSensorData ? currentSensorData.irradiance : 0;
