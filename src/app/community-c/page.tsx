@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -27,17 +28,19 @@ import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const COMMUNITY_C_USER_ID = '7yV6eXu6A1ReAXdtqOVMWszmiOD2';
+const DATA_LIMIT = 20;
 
 export default function CommunityCPage() {
   const firestore = useFirestore();
   const [latestData, setLatestData] = useState<any>(null);
+  const [historicalData, setHistoricalData] = useState<any[]>([]);
 
   const espDataQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(
       collection(firestore, 'users', COMMUNITY_C_USER_ID, 'esp32_data'),
       orderBy('timestamp', 'desc'),
-      limit(1)
+      limit(DATA_LIMIT)
     );
   }, [firestore]);
 
@@ -45,9 +48,11 @@ export default function CommunityCPage() {
 
   useEffect(() => {
     if (espData && espData.length > 0) {
-      setLatestData(espData[0]);
+      setLatestData(espData[0]); // The first item is the latest
+      setHistoricalData(espData); // The whole array for the chart
     } else {
       setLatestData(null);
+      setHistoricalData([]);
     }
   }, [espData]);
   
@@ -62,9 +67,14 @@ export default function CommunityCPage() {
   const totalConsumption = communityNode ? communityNode.power / 1000 : 0;
   const onlineNodes = communityNode ? 1 : 0;
   
-  const chartData = latestData ? [
-    { day: new Date(latestData.timestamp?.toDate()).toLocaleTimeString(), consumption: totalConsumption, generation: (latestData.ldr / 1023) * 1.5 },
-  ] : [];
+  const chartData = historicalData
+    .map(d => ({
+        // Format timestamp to a readable time string
+        day: d.timestamp ? new Date(d.timestamp.toDate()).toLocaleTimeString() : 'N/A',
+        consumption: (d.voltage * d.current) / 1000, // in kW
+        generation: (d.ldr / 1023) * 1.5, // Estimated generation in kW
+    }))
+    .reverse(); // Reverse to show chronological order
 
   return (
     <div className="flex flex-col gap-6">
@@ -87,7 +97,7 @@ export default function CommunityCPage() {
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isEspDataLoading ? <Skeleton className="h-8 w-24"/> : 
+            {isEspDataLoading && !latestData ? <Skeleton className="h-8 w-24"/> : 
                 <>
                     <div className="text-2xl font-bold">{totalConsumption.toFixed(2)} kW</div>
                     <p className="text-xs text-muted-foreground">Live from all online nodes</p>
@@ -101,7 +111,7 @@ export default function CommunityCPage() {
             <User className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isEspDataLoading ? <Skeleton className="h-8 w-24"/> : 
+            {isEspDataLoading && !latestData ? <Skeleton className="h-8 w-24"/> : 
                 <>
                     <div className="text-2xl font-bold">{onlineNodes} / 1</div>
                     <p className="text-xs text-muted-foreground">Online right now</p>
@@ -115,7 +125,7 @@ export default function CommunityCPage() {
                 <Zap className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                 {isEspDataLoading ? <Skeleton className="h-8 w-24"/> :
+                 {isEspDataLoading && !latestData ? <Skeleton className="h-8 w-24"/> :
                     <>
                         <div className="text-2xl font-bold">{totalConsumption.toFixed(2)} kW</div>
                         <p className="text-xs text-muted-foreground">Current load</p>
@@ -135,7 +145,7 @@ export default function CommunityCPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isEspDataLoading ? <Skeleton className="h-40 w-full"/> : communityNode ? (
+              {isEspDataLoading && !latestData ? <Skeleton className="h-40 w-full"/> : communityNode ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
