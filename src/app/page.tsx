@@ -84,7 +84,6 @@ export default function Page() {
       
       try {
         const result = await deriveMetrics({ ...sensorData, communityId: selectedCommunity });
-        // We exclude power from what we set here, as it's calculated directly
         const { power, ...restOfMetrics } = result;
         setMetrics(restOfMetrics);
       } catch (e: any) {
@@ -108,13 +107,13 @@ export default function Page() {
           temperature: latestData.temperature || 0,
           ldr: latestData.ldr || 0,
         };
-        // Only update sensor data and call metrics if it's new data
-        if (JSON.stringify(sensorInput) !== JSON.stringify(currentSensorData)) {
-            setCurrentSensorData(sensorInput);
-            getMetrics(sensorInput);
-        }
+        // Update sensor data and call metrics
+        setCurrentSensorData(sensorInput);
+        getMetrics(sensorInput);
       } else {
          setIsLive(false); // Data is too old, consider it offline
+         setCurrentSensorData(null); // Clear sensor data when offline
+         setMetrics(initialMetrics);
       }
     } else if (!isEspDataLoading) {
       setLoading(false);
@@ -139,8 +138,7 @@ export default function Page() {
 
     return () => clearInterval(intervalId);
 
-
-  }, [espData, isEspDataLoading, selectedCommunity, currentSensorData]);
+  }, [espData, isEspDataLoading, selectedCommunity]);
 
   const power = currentSensorData ? currentSensorData.voltage * currentSensorData.current : 0;
   const solarIrradiance = currentSensorData ? (currentSensorData.ldr / 1023) * 1000 : 0;
@@ -193,12 +191,20 @@ export default function Page() {
         </CardHeader>
       </Card>
       
-       {!isEspDataLoading && !currentSensorData && (
+       {isEspDataLoading && !currentSensorData && (
+          <Card>
+            <CardContent>
+              <p className="text-muted-foreground">Connecting to your ESP32 device...</p>
+            </CardContent>
+          </Card>
+        )}
+
+       {!isEspDataLoading && !currentSensorData && !isLive && (
           <Card>
             <CardHeader>
               <CardTitle>Waiting for Data for {selectedCommunity}</CardTitle>
               <CardDescription>
-                No data has been received for this community yet. Please ensure your ESP32 device is on, connected, and sending data for all three communities.
+                No data has been received for this community yet, or the device is offline. Please ensure your ESP32 device is on, connected, and sending data.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -216,6 +222,9 @@ export default function Page() {
           </CardHeader>
           <CardContent>
             {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.voltage.toFixed(1)} V</div>}
+            <p className="text-xs text-muted-foreground">
+              {isEspDataLoading || !currentSensorData ? 'Waiting for data...' : 'Live Reading'}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -225,6 +234,9 @@ export default function Page() {
           </CardHeader>
           <CardContent>
             {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.current.toFixed(2)} A</div>}
+             <p className="text-xs text-muted-foreground">
+              {isEspDataLoading || !currentSensorData ? 'Waiting for data...' : 'Live Reading'}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -234,6 +246,9 @@ export default function Page() {
           </CardHeader>
           <CardContent>
             {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{power.toFixed(0)} W</div>}
+             <p className="text-xs text-muted-foreground">
+              {isEspDataLoading || !currentSensorData ? 'Waiting for data...' : 'Live Calculation'}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -243,6 +258,9 @@ export default function Page() {
           </CardHeader>
           <CardContent>
              {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.temperature.toFixed(1)} °C</div>}
+             <p className="text-xs text-muted-foreground">
+              {isEspDataLoading || !currentSensorData ? 'Waiting for data...' : 'Live Reading'}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -252,7 +270,7 @@ export default function Page() {
           </CardHeader>
           <CardContent>
             {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{metrics.batteryHealth.toFixed(1)} %</div>}
-            <p className="text-xs text-muted-foreground">{metrics.batteryState}</p>
+            <p className="text-xs text-muted-foreground">{loading ? 'Analyzing...' : metrics.batteryState}</p>
           </CardContent>
         </Card>
         <Card>
@@ -262,7 +280,7 @@ export default function Page() {
           </CardHeader>
           <CardContent>
             {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{metrics.timeToFull}</div>}
-            <p className="text-xs text-muted-foreground">{metrics.batteryState === 'Charging' ? 'Charging' : 'Not charging'}</p>
+            <p className="text-xs text-muted-foreground">{loading ? 'Analyzing...' : (metrics.batteryState === 'Charging' ? 'Charging' : 'Not charging')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -272,34 +290,9 @@ export default function Page() {
           </CardHeader>
           <CardContent>
             {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{solarIrradiance.toFixed(0)} <span className='text-lg'>W/m²</span></div>}
-            <p className="text-xs text-muted-foreground">Insolation level</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Solar Generation Chart */}
-      <Card>
-        <CardContent className="h-[300px] p-0 pt-6">
-          <SolarGenerationChart />
-        </CardContent>
-      </Card>
-
-      {/* Community Distribution & Battery State & Predictive Maintenance */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Community Distribution Today</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[250px]">
-            <CommunityDistributionChart />
-          </CardContent>
-        </Card>
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>Battery State</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BatteryStateChart />
+            <p className="text-xs text-muted-foreground">
+              {isEspDataLoading || !currentSensorData ? 'Waiting for data...' : 'Live Calculation'}
+            </p>
           </CardContent>
         </Card>
          <Card>
@@ -342,7 +335,35 @@ export default function Page() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Solar Generation Chart */}
+      <Card>
+        <CardContent className="h-[300px] p-0 pt-6">
+          <SolarGenerationChart />
+        </CardContent>
+      </Card>
+
+      {/* Community Distribution & Battery State */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Community Distribution Today</CardTitle>
+          </CardHeader>
+          <CardContent className="h-[250px]">
+            <CommunityDistributionChart />
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Battery State</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BatteryStateChart />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 
     
+
