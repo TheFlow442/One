@@ -10,8 +10,11 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase/client';
 
 const DeriveMetricsInputSchema = z.object({
+  communityId: z.string().describe('The ID of the community (e.g., "Community A").'),
   voltage: z.number().describe('The current voltage reading from the sensor (in Volts).'),
   current: z.number().describe('The current reading from the sensor (in Amperes). Positive values indicate charging, negative values indicate discharging.'),
   temperature: z.number().describe('The ambient temperature reading from the sensor (in Celsius).'),
@@ -47,6 +50,7 @@ const deriveMetricsPrompt = ai.definePrompt({
     prompt: `You are an expert microgrid analyst. Based on the following real-time sensor data, derive the specified output metrics.
 
     Sensor Data:
+    - Community: {{{communityId}}}
     - Voltage: {{{voltage}}} V
     - Current: {{{current}}} A
     - Power: {{{power}}} W
@@ -62,6 +66,27 @@ const deriveMetricsPrompt = ai.definePrompt({
     - Generate relevant maintenance alerts based on the rules described in the schema.
     `,
 });
+
+// Function to save alerts to Firestore
+async function saveAlertsToFirestore(alerts: DeriveMetricsOutput['maintenanceAlerts'], communityId: string) {
+    try {
+        const { firestore } = initializeFirebase();
+        const alertsCollection = collection(firestore, 'alerts');
+
+        for (const alert of alerts) {
+            await addDoc(alertsCollection, {
+                ...alert,
+                communityId,
+                timestamp: serverTimestamp(),
+                status: 'new', // or 'acknowledged'
+            });
+        }
+    } catch (error) {
+        console.error("Failed to save alerts to Firestore:", error);
+        // We don't re-throw here to avoid failing the whole flow if only Firestore write fails.
+    }
+}
+
 
 const deriveMetricsFlow = ai.defineFlow(
   {
@@ -86,6 +111,11 @@ const deriveMetricsFlow = ai.defineFlow(
 
     // Ensure the output power is the one we calculated, overriding any AI hallucination.
     output.power = power;
+
+    // Asynchronously save any generated alerts to Firestore without blocking the response.
+    if (output.maintenanceAlerts && output.maintenanceAlerts.length > 0) {
+        saveAlertsToFirestore(output.maintenanceAlerts, input.communityId);
+    }
 
     return output;
   }

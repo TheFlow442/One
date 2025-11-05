@@ -54,7 +54,7 @@ export default function Page() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [metrics, setMetrics] = useState<Omit<DeriveMetricsOutput, 'power'>>(initialMetrics);
-  const [currentSensorData, setCurrentSensorData] = useState<DeriveMetricsInput | null>(null);
+  const [currentSensorData, setCurrentSensorData] = useState<Omit<DeriveMetricsInput, 'communityId'> | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
   const [selectedCommunity, setSelectedCommunity] = useState<Community>('Community A');
@@ -73,7 +73,7 @@ export default function Page() {
   const { data: espData, isLoading: isEspDataLoading } = useCollection<any>(espDataQuery);
 
   useEffect(() => {
-    const getMetrics = async (sensorData: DeriveMetricsInput) => {
+    const getMetrics = async (sensorData: Omit<DeriveMetricsInput, 'communityId'>) => {
       setIsLive(false);
       setLoading(true);
 
@@ -84,7 +84,7 @@ export default function Page() {
       }
       
       try {
-        const result = await deriveMetrics(sensorData);
+        const result = await deriveMetrics({ ...sensorData, communityId: selectedCommunity });
         setMetrics(result);
         setIsLive(true);
       } catch (e: any) {
@@ -98,7 +98,7 @@ export default function Page() {
     
     if (espData && espData.length > 0) {
       const latestData = espData[0];
-      const sensorInput: DeriveMetricsInput = {
+      const sensorInput: Omit<DeriveMetricsInput, 'communityId'> = {
         voltage: latestData.voltage || 0,
         current: latestData.current || 0,
         temperature: latestData.temperature || 0,
@@ -112,7 +112,7 @@ export default function Page() {
       setMetrics(initialMetrics);
     }
 
-  }, [espData, isEspDataLoading]);
+  }, [espData, isEspDataLoading, selectedCommunity]);
 
   const power = currentSensorData ? currentSensorData.voltage * currentSensorData.current : 0;
 
@@ -186,7 +186,7 @@ export default function Page() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.voltage.toFixed(1)} V</div>}
+            {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.voltage.toFixed(1)} V</div>}
           </CardContent>
         </Card>
         <Card>
@@ -195,7 +195,7 @@ export default function Page() {
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.current.toFixed(2)} A</div>}
+            {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.current.toFixed(2)} A</div>}
           </CardContent>
         </Card>
         <Card>
@@ -204,7 +204,7 @@ export default function Page() {
             <Power className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{power.toFixed(0)} W</div>}
+            {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{power.toFixed(0)} W</div>}
           </CardContent>
         </Card>
         <Card>
@@ -213,7 +213,7 @@ export default function Page() {
             <Thermometer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             {loading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.temperature.toFixed(1)} °C</div>}
+             {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.temperature.toFixed(1)} °C</div>}
           </CardContent>
         </Card>
         <Card>
@@ -316,5 +316,3 @@ export default function Page() {
     </div>
   );
 }
-
-    
