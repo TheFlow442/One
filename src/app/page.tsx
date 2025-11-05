@@ -39,8 +39,7 @@ const communityUsers = {
 };
 type Community = keyof typeof communityUsers;
 
-const initialMetrics: DeriveMetricsOutput = {
-  power: 0,
+const initialMetrics: Omit<DeriveMetricsOutput, 'power'> = {
   batteryHealth: 0,
   batteryState: 'Idle',
   timeToFull: '--',
@@ -53,7 +52,7 @@ const isApiKeySet = process.env.NEXT_PUBLIC_IS_GEMINI_API_KEY_SET === 'true';
 export default function Page() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const [metrics, setMetrics] = useState<DeriveMetricsOutput>(initialMetrics);
+  const [metrics, setMetrics] = useState<Omit<DeriveMetricsOutput, 'power'>>(initialMetrics);
   const [currentSensorData, setCurrentSensorData] = useState<Omit<DeriveMetricsInput, 'communityId'> | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
@@ -74,30 +73,29 @@ export default function Page() {
 
   useEffect(() => {
     const getMetrics = async (sensorData: Omit<DeriveMetricsInput, 'communityId'>) => {
-      setIsLive(false);
       setLoading(true);
 
       if (!isApiKeySet) {
-        // We still need to set the power on the initial metrics object, even if the API key is not set
-        setMetrics({ ...initialMetrics, power: sensorData.voltage * sensorData.current });
+        setMetrics(initialMetrics);
         setLoading(false);
         return;
       }
       
       try {
         const result = await deriveMetrics({ ...sensorData, communityId: selectedCommunity });
-        setMetrics(result);
-        setIsLive(true);
+        // We exclude power from what we set here, as it's calculated directly
+        const { power, ...restOfMetrics } = result;
+        setMetrics(restOfMetrics);
       } catch (e: any) {
         console.error("Error deriving metrics:", e);
-        setMetrics({ ...initialMetrics, power: sensorData.voltage * sensorData.current });
-        setIsLive(false);
+        setMetrics(initialMetrics);
       } finally {
         setLoading(false);
       }
     };
     
     if (espData && espData.length > 0) {
+      setIsLive(true);
       const latestData = espData[0];
       const sensorInput: Omit<DeriveMetricsInput, 'communityId'> = {
         voltage: latestData.voltage || 0,
@@ -109,6 +107,7 @@ export default function Page() {
       getMetrics(sensorInput);
     } else if (!isEspDataLoading) {
       setLoading(false);
+      setIsLive(false);
       setCurrentSensorData(null);
       setMetrics(initialMetrics);
     }
@@ -318,3 +317,5 @@ export default function Page() {
     </div>
   );
 }
+
+    
