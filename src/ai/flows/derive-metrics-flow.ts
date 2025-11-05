@@ -15,10 +15,12 @@ import { initializeFirebase } from '@/firebase/client';
 
 const DeriveMetricsInputSchema = z.object({
   communityId: z.string().describe('The ID of the community (e.g., "Community A").'),
-  voltage: z.number().describe('The current voltage reading from the sensor (in Volts).'),
-  current: z.number().describe('The current reading from the sensor (in Amperes). Positive values indicate charging, negative values indicate discharging.'),
-  temperature: z.number().describe('The ambient temperature reading from the sensor (in Celsius).'),
-  ldr: z.number().describe('The light dependent resistor (LDR) reading, from 0 (dark) to 1023 (bright). This represents solar intensity.'),
+  inverterV: z.number().describe('The inverter AC output voltage (in Volts).'),
+  inverterI: z.number().describe('The inverter AC output current (in Amperes).'),
+  batteryV: z.number().describe('The current battery voltage (in Volts).'),
+  batteryI: z.number().describe('The current flowing into/out of the battery (in Amperes). Positive values indicate charging, negative values indicate discharging.'),
+  batteryTemp: z.number().describe('The battery temperature (in Celsius).'),
+  irradiance: z.number().describe('The solar irradiance reading, from 0 to 1000 (W/m^2). This represents solar intensity.'),
 });
 export type DeriveMetricsInput = z.infer<typeof DeriveMetricsInputSchema>;
 
@@ -31,14 +33,14 @@ type InternalPromptInput = z.infer<typeof InternalPromptInputSchema>;
 
 const DeriveMetricsOutputSchema = z.object({
   power: z.number().describe('Calculated power in Watts (Voltage * Current).'),
-  batteryHealth: z.number().min(0).max(100).describe("The estimated health of the battery as a percentage. Base it on temperature; optimal health is between 15-25°C. Health degrades significantly outside this range."),
-  batteryState: z.enum(['Charging', 'Discharging', 'Idle']).describe("The current state of the battery. 'Charging' if current is positive, 'Discharging' if negative, and 'Idle' if zero."),
-  timeToFull: z.string().describe("An estimated time to fully charge the battery, formatted as 'Xh Ym'. If not charging, this should be '--'. The AI should reason about a standard battery capacity (e.g., 5kWh) to make an estimation based on the current charging rate (power)."),
+  batteryHealth: z.number().min(0).max(100).describe("The estimated health of the battery as a percentage. Base it on batteryTemp; optimal health is between 15-25°C. Health degrades significantly outside this range."),
+  batteryState: z.enum(['Charging', 'Discharging', 'Idle']).describe("The current state of the battery. 'Charging' if batteryI is positive, 'Discharging' if negative, and 'Idle' if zero."),
+  timeToFull: z.string().describe("An estimated time to fully charge the battery, formatted as 'Xh Ym'. If not charging, this should be '--'. The AI should reason about a standard battery capacity (e.g., 5kWh) to make an estimation based on the current charging rate (batteryV * batteryI)."),
   maintenanceAlerts: z.array(z.object({
     id: z.string(),
     title: z.string(),
     description: z.string(),
-  })).describe("A list of predictive maintenance alerts. Generate alerts for conditions like high temperature (> 40°C), unusual voltage spikes (> 240V), or if the inverter should be online (daylight) but is not producing power."),
+  })).describe("A list of predictive maintenance alerts. Generate alerts for conditions like high battery temperature (> 40°C), unusual inverter voltage spikes (> 240V), or if the inverter should be online (daylight, high irradiance > 300) but is not producing power (inverterI is near zero)."),
 });
 export type DeriveMetricsOutput = z.infer<typeof DeriveMetricsOutputSchema>;
 
@@ -46,22 +48,24 @@ const deriveMetricsPrompt = ai.definePrompt({
     name: 'deriveMetricsPrompt',
     input: { schema: InternalPromptInputSchema },
     output: { schema: DeriveMetricsOutputSchema },
-    prompt: `You are an expert microgrid analyst. Based on the following real-time sensor data, derive the specified output metrics.
+    prompt: `You are an expert microgrid analyst. Based on the following real-time sensor data from a solar installation, derive the specified output metrics.
 
     Sensor Data:
     - Community: {{{communityId}}}
-    - Voltage: {{{voltage}}} V
-    - Current: {{{current}}} A
-    - Power: {{{power}}} W
-    - Temperature: {{{temperature}}} °C
-    - LDR Reading: {{{ldr}}}
+    - Inverter Voltage: {{{inverterV}}} V
+    - Inverter Current: {{{inverterI}}} A
+    - Total Power Output: {{{power}}} W
+    - Battery Voltage: {{{batteryV}}} V
+    - Battery Current: {{{batteryI}}} A
+    - Battery Temperature: {{{batteryTemp}}} °C
+    - Solar Irradiance: {{{irradiance}}} W/m^2
 
     Your task is to analyze this data and return a structured JSON object with the derived metrics as defined in the output schema.
-    - The 'power' value is already calculated for you. Include it in your output.
-    - Estimate battery health based on temperature.
-    - Determine battery state from the current's direction.
-    - Estimate time-to-full if the battery is charging, assuming a standard 5kWh battery capacity for your calculation.
-    - Generate relevant maintenance alerts based on the rules described in the schema.
+    - The 'power' value is the total output power, already calculated for you. Include it in your output.
+    - Estimate 'batteryHealth' based on 'batteryTemp'.
+    - Determine 'batteryState' from the direction of 'batteryI'.
+    - Estimate 'timeToFull' if the battery is charging, assuming a standard 5kWh battery capacity for your calculation.
+    - Generate relevant 'maintenanceAlerts' based on the rules described in the schema.
     `,
 });
 
@@ -94,7 +98,7 @@ const deriveMetricsFlow = ai.defineFlow(
   },
   async (input) => {
     // Calculate power deterministically.
-    const power = input.voltage * input.current;
+    const power = input.inverterV * input.inverterI;
     
     // Create the input for the AI prompt, including the calculated power.
     const promptInput: InternalPromptInput = {

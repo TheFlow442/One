@@ -39,42 +39,65 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Esp32Data",
       "type": "object",
-      "description": "Represents data received from an ESP32 device.",
+      "description": "Represents detailed data received from an integrated ESP32 microgrid controller.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Esp32Data entry."
-        },
         "timestamp": {
           "type": "string",
-          "description": "Timestamp of when the data was received, ideally as a server timestamp.",
+          "description": "Server timestamp of when the data was received.",
           "format": "date-time"
         },
-        "voltage": {
+        "panelV": {
           "type": "number",
-          "description": "The voltage reading from the sensor."
+          "description": "Solar panel voltage (V)."
         },
-        "current": {
+        "panelI": {
           "type": "number",
-          "description": "The current reading from the sensor."
+          "description": "Solar panel current (A)."
         },
-        "temperature": {
+        "batteryV": {
           "type": "number",
-          "description": "The temperature reading from the sensor."
+          "description": "Battery voltage (V)."
         },
-        "ldr": {
+        "batteryI": {
           "type": "number",
-          "description": "The light dependent resistor reading."
-        }
+          "description": "Battery current (A). Positive for charging, negative for discharging."
+        },
+        "batteryTemp": {
+          "type": "number",
+          "description": "Battery temperature (°C)."
+        },
+        "batteryPercent": {
+          "type": "number",
+          "description": "Calculated battery state of charge (%)."
+        },
+        "inverterV": {
+          "type": "number",
+          "description": "Inverter AC output voltage (V)."
+        },
+        "inverterI": {
+          "type": "number",
+          "description": "Inverter AC output current (A)."
+        },
+        "inverterTemp": {
+          "type": "number",
+          "description": "Inverter temperature (°C)."
+        },
+        "totalPower": {
+          "type": "number",
+          "description": "Total power being drawn from the inverter (W)."
+        },
+        "irradiance": {
+          "type": "number",
+          "description": "Solar irradiance reading (W/m^2)."
+        },
+        "comA_V": { "type": "number", "description": "Community A line voltage (V)." },
+        "comA_I": { "type": "number", "description": "Community A line current (A)." },
+        "comB_V": { "type": "number", "description": "Community B line voltage (V)." },
+        "comB_I": { "type": "number", "description": "Community B line current (A)." },
+        "comC_V": { "type": "number", "description": "Community C line voltage (V)." },
+        "comC_I": { "type": "number", "description": "Community C line current (A)." }
       },
-      "required": [
-        "id",
-        "timestamp",
-        "voltage",
-        "current",
-        "temperature",
-        "ldr"
-      ]
+      "required": ["timestamp", "inverterV", "inverterI", "batteryTemp", "irradiance"]
     }
   },
   "auth": {
@@ -111,5 +134,3 @@
     "reasoning": "The Firestore data structure is designed to ensure authorization independence, clarity, and scalability. User data is stored under `/users/{userId}`. ESP32 data is stored as a subcollection at `/users/{userId}/esp32_data/{esp32DataId}`. This structure maintains a clear ownership model where each user's sensor data is nested under their profile, allowing for intuitive and secure data access using Firestore's security rules."
   }
 }
-
-    

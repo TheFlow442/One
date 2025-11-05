@@ -48,13 +48,13 @@ const initialMetrics: Omit<DeriveMetricsOutput, 'power'> = {
 
 // This is a server-side check that gets passed to the client
 const isApiKeySet = process.env.NEXT_PUBLIC_IS_GEMINI_API_KEY_SET === 'true';
-const LIVE_THRESHOLD_SECONDS = 30; // Consider offline if no data for 30s
+const LIVE_THRESHOLD_SECONDS = 15; // Consider offline if no data for 15s
 
 export default function Page() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [metrics, setMetrics] = useState<Omit<DeriveMetricsOutput, 'power'>>(initialMetrics);
-  const [currentSensorData, setCurrentSensorData] = useState<Omit<DeriveMetricsInput, 'communityId'> | null>(null);
+  const [currentSensorData, setCurrentSensorData] = useState<any>(null); // Using 'any' to accommodate new fields
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
   const [selectedCommunity, setSelectedCommunity] = useState<Community>('Community A');
@@ -73,7 +73,7 @@ export default function Page() {
   const { data: espData, isLoading: isEspDataLoading } = useCollection<any>(espDataQuery);
 
   useEffect(() => {
-    const getMetrics = async (sensorData: Omit<DeriveMetricsInput, 'communityId'>) => {
+    const getMetrics = async (sensorData: any) => {
       setLoading(true);
 
       if (!isApiKeySet) {
@@ -83,7 +83,16 @@ export default function Page() {
       }
       
       try {
-        const result = await deriveMetrics({ ...sensorData, communityId: selectedCommunity });
+        const input: DeriveMetricsInput = {
+          communityId: selectedCommunity,
+          inverterV: sensorData.inverterV || 0,
+          inverterI: sensorData.inverterI || 0,
+          batteryV: sensorData.batteryV || 0,
+          batteryI: sensorData.batteryI || 0,
+          batteryTemp: sensorData.batteryTemp || 0,
+          irradiance: sensorData.irradiance || 0,
+        };
+        const result = await deriveMetrics(input);
         const { power, ...restOfMetrics } = result;
         setMetrics(restOfMetrics);
       } catch (e: any) {
@@ -102,37 +111,27 @@ export default function Page() {
 
       if (isDataFresh) {
         setIsLive(true);
-        const sensorInput: Omit<DeriveMetricsInput, 'communityId'> = {
-          voltage: latestData.voltage || 0,
-          current: latestData.current || 0,
-          temperature: latestData.temperature || 0,
-          ldr: latestData.ldr || 0,
-        };
-        setCurrentSensorData(sensorInput);
-        getMetrics(sensorInput);
+        setCurrentSensorData(latestData);
+        getMetrics(latestData);
       } else {
-         // Data is stale
          setIsLive(false);
          setCurrentSensorData(null);
          setMetrics(initialMetrics);
-         setLoading(false); // Not loading if data is stale
+         setLoading(false);
       }
     } else if (!isEspDataLoading) {
-      // No data and not loading
       setIsLive(false);
       setCurrentSensorData(null);
       setMetrics(initialMetrics);
       setLoading(false);
     }
     
-    // Set up an interval to check the liveness status periodically
     const intervalId = setInterval(() => {
         if (espData && espData.length > 0) {
             const latestData = espData[0];
             const now = new Date();
             const dataTimestamp = latestData.timestamp?.toDate();
             if (!dataTimestamp || (now.getTime() - dataTimestamp.getTime()) / 1000 > LIVE_THRESHOLD_SECONDS) {
-                // If data becomes stale, update liveness
                 if (isLive) {
                     setIsLive(false);
                     setCurrentSensorData(null);
@@ -140,19 +139,18 @@ export default function Page() {
                 }
             }
         } else if (isLive) {
-            // If there's no data at all, but we were previously live
             setIsLive(false);
             setCurrentSensorData(null);
             setMetrics(initialMetrics);
         }
-    }, LIVE_THRESHOLD_SECONDS * 500); // Check every half threshold
+    }, LIVE_THRESHOLD_SECONDS * 500);
 
     return () => clearInterval(intervalId);
 
   }, [espData, isEspDataLoading, selectedCommunity]);
 
-  const power = currentSensorData ? currentSensorData.voltage * currentSensorData.current : 0;
-  const solarIrradiance = currentSensorData ? (currentSensorData.ldr / 1023) * 1000 : 0;
+  const power = currentSensorData ? currentSensorData.totalPower : 0;
+  const solarIrradiance = currentSensorData ? currentSensorData.irradiance : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -228,11 +226,11 @@ export default function Page() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Voltage</CardTitle>
+            <CardTitle className="text-sm font-medium">Inverter Voltage</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.voltage.toFixed(1)} V</div>}
+            {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{(currentSensorData.inverterV || 0).toFixed(1)} V</div>}
             <p className="text-xs text-muted-foreground">
               {isEspDataLoading && !currentSensorData ? 'Waiting for data...' : isLive ? 'Live Reading' : 'Offline'}
             </p>
@@ -240,11 +238,11 @@ export default function Page() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Current</CardTitle>
+            <CardTitle className="text-sm font-medium">Inverter Current</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.current.toFixed(2)} A</div>}
+            {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{(currentSensorData.inverterI || 0).toFixed(2)} A</div>}
              <p className="text-xs text-muted-foreground">
               {isEspDataLoading && !currentSensorData ? 'Waiting for data...' : isLive ? 'Live Reading' : 'Offline'}
             </p>
@@ -252,7 +250,7 @@ export default function Page() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Power</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Power</CardTitle>
             <Power className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -264,11 +262,11 @@ export default function Page() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Temperature</CardTitle>
+            <CardTitle className="text-sm font-medium">Battery Temp</CardTitle>
             <Thermometer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.temperature.toFixed(1)} °C</div>}
+             {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{(currentSensorData.batteryTemp || 0).toFixed(1)} °C</div>}
              <p className="text-xs text-muted-foreground">
               {isEspDataLoading && !currentSensorData ? 'Waiting for data...' : isLive ? 'Live Reading' : 'Offline'}
             </p>
@@ -375,5 +373,3 @@ export default function Page() {
       </div>
     </div>
   );
-
-    
