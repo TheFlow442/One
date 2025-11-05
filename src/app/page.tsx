@@ -93,38 +93,30 @@ export default function Page() {
       const isDataFresh = dataTimestamp && (now.getTime() - dataTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
 
       setIsLive(isDataFresh);
+      setCurrentSensorData(latestData);
       
-      if (isDataFresh) {
-        setCurrentSensorData(latestData);
-        setLoadingMetrics(true); // Start loading for AI metrics
-        
-        if (isApiKeySet) {
-          try {
-            const input: DeriveMetricsInput = {
-              communityId: selectedCommunity,
-              inverterV: latestData.inverterV || 0,
-              inverterI: latestData.inverterI || 0,
-              batteryV: latestData.batteryV || 0,
-              batteryI: latestData.batteryI || 0,
-              batteryTemp: latestData.batteryTemp || 0,
-              irradiance: latestData.irradiance || 0,
-            };
-            const result = await deriveMetrics(input);
-            const { power, ...restOfMetrics } = result;
-            setMetrics(restOfMetrics);
-          } catch (e: any) {
-            console.error("Error deriving metrics:", e);
-            setMetrics(initialMetrics); // Reset on error
-          } finally {
-            setLoadingMetrics(false); // Stop loading after AI call
-          }
-        } else {
-          setMetrics(initialMetrics); // Reset if API key not set
+      if (isDataFresh && isApiKeySet) {
+        setLoadingMetrics(true);
+        try {
+          const input: DeriveMetricsInput = {
+            communityId: selectedCommunity,
+            inverterV: latestData.inverterV || 0,
+            inverterI: latestData.inverterI || 0,
+            batteryV: latestData.batteryV || 0,
+            batteryI: latestData.batteryI || 0,
+            batteryTemp: latestData.batteryTemp || 0,
+            irradiance: latestData.irradiance || 0,
+          };
+          const result = await deriveMetrics(input);
+          const { power, ...restOfMetrics } = result;
+          setMetrics(restOfMetrics);
+        } catch (e: any) {
+          console.error("Error deriving metrics:", e);
+          setMetrics(initialMetrics); // Reset on error
+        } finally {
           setLoadingMetrics(false);
         }
       } else {
-        // Data is stale
-        setCurrentSensorData(null);
         setMetrics(initialMetrics);
         setLoadingMetrics(false);
       }

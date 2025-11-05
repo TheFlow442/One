@@ -24,12 +24,6 @@ const DeriveMetricsInputSchema = z.object({
 });
 export type DeriveMetricsInput = z.infer<typeof DeriveMetricsInputSchema>;
 
-// Internal schema that includes the pre-calculated power
-const InternalPromptInputSchema = DeriveMetricsInputSchema.extend({
-    power: z.number().describe('Calculated power in Watts (Voltage * Current).'),
-});
-type InternalPromptInput = z.infer<typeof InternalPromptInputSchema>;
-
 
 const DeriveMetricsOutputSchema = z.object({
   power: z.number().describe('Calculated power in Watts (Voltage * Current).'),
@@ -46,7 +40,7 @@ export type DeriveMetricsOutput = z.infer<typeof DeriveMetricsOutputSchema>;
 
 const deriveMetricsPrompt = ai.definePrompt({
     name: 'deriveMetricsPrompt',
-    input: { schema: InternalPromptInputSchema },
+    input: { schema: DeriveMetricsInputSchema.extend({ power: z.number() }) },
     output: { schema: DeriveMetricsOutputSchema },
     prompt: `You are an expert microgrid analyst. Based on the following real-time sensor data from a solar installation, derive the specified output metrics.
 
@@ -101,7 +95,7 @@ const deriveMetricsFlow = ai.defineFlow(
     const power = input.inverterV * input.inverterI;
     
     // Create the input for the AI prompt, including the calculated power.
-    const promptInput: InternalPromptInput = {
+    const promptInput = {
       ...input,
       power: power,
     };
