@@ -34,7 +34,6 @@ const DeriveMetricsOutputSchema = z.object({
   batteryHealth: z.number().min(0).max(100).describe("The estimated health of the battery as a percentage. Base it on temperature; optimal health is between 15-25°C. Health degrades significantly outside this range."),
   batteryState: z.enum(['Charging', 'Discharging', 'Idle']).describe("The current state of the battery. 'Charging' if current is positive, 'Discharging' if negative, and 'Idle' if zero."),
   timeToFull: z.string().describe("An estimated time to fully charge the battery, formatted as 'Xh Ym'. If not charging, this should be '--'. The AI should reason about a standard battery capacity (e.g., 5kWh) to make an estimation based on the current charging rate (power)."),
-  solarIrradiance: z.number().describe("The estimated solar irradiance in W/m², converted from the LDR value. Assume a linear scale where 0 LDR is 0 W/m² and 1023 LDR is ~1000 W/m²."),
   maintenanceAlerts: z.array(z.object({
     id: z.string(),
     title: z.string(),
@@ -62,7 +61,6 @@ const deriveMetricsPrompt = ai.definePrompt({
     - Estimate battery health based on temperature.
     - Determine battery state from the current's direction.
     - Estimate time-to-full if the battery is charging, assuming a standard 5kWh battery capacity for your calculation.
-    - Convert the LDR value to solar irradiance.
     - Generate relevant maintenance alerts based on the rules described in the schema.
     `,
 });
