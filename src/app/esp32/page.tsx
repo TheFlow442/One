@@ -3,42 +3,21 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { firebaseConfig } from '@/firebase/config';
-import { Cpu, KeyRound, Send, ShieldCheck, Wifi, User, Users } from 'lucide-react';
+import { Cpu, ShieldCheck } from 'lucide-react';
 import { CodeBlock } from '@/components/code-block';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function ESP32Page() {
   const projectId = firebaseConfig.projectId;
   const apiKey = firebaseConfig.apiKey;
 
-  const generateArduinoCode = (community: 'A' | 'B' | 'C') => {
-    let userEmail, userPassword, userId;
-    switch (community) {
-      case 'A':
-        userEmail = 'user1@volta.view';
-        userPassword = 'password123';
-        userId = '0nkCeSiTQbcTEhEMcUhQwYT39U72';
-        break;
-      case 'B':
-        userEmail = 'user2@volta.view';
-        userPassword = 'password123';
-        userId = 'F0jfqt20cPXSqJ2nsJeZtseO1qn2';
-        break;
-      case 'C':
-        userEmail = 'user3@volta.view';
-        userPassword = 'password123';
-        userId = '7yV6eXu6A1ReAXdtqOVMWszmiOD2';
-        break;
-    }
-
-    return `
+  const arduinoCode = `
 /*
- * VoltaView ESP32 Firebase Connector - Community ${community}
+ * VoltaView ESP32 Firebase Connector - Multi-Community Device
  * 
- * This code connects an ESP32 to a WiFi network, authenticates with
- * Firebase using a user's email/password, and sends sensor data to a 
- * Firestore database via the REST API.
+ * This code connects a single ESP32 to a WiFi network, then sequentially 
+ * authenticates as three different Firebase users (one for each community)
+ * and sends the corresponding sensor data to a Firestore database via the REST API.
  * 
  * Required Arduino Libraries:
  * - ArduinoJson (by Benoit Blanchon)
@@ -49,58 +28,83 @@ export default function ESP32Page() {
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-// -------- 1. WIFI & FIREBASE CREDENTIALS (REPLACE WITH YOURS) --------
+// -------- 1. WIFI & FIREBASE PROJECT CREDENTIALS --------
 const char* WIFI_SSID = "op";
 const char* WIFI_PASSWORD = "987654321";
 
-// This should be the user dedicated to Community ${community}
-const char* FIREBASE_USER_EMAIL = "${userEmail}";
-const char* FIREBASE_USER_PASSWORD = "${userPassword}";
-const char* USER_ID = "${userId}"; // <-- This UID is for ${userEmail}
-
-// These are specific to your Firebase project
 const char* WEB_API_KEY = "${apiKey}";
 const char* PROJECT_ID = "${projectId}";
 
-// -------- 2. SENSOR & DATA VARS --------
+// -------- 2. COMMUNITY USER CREDENTIALS --------
+struct Community {
+  const char* email;
+  const char* password;
+  const char* uid;
+};
+
+Community communities[] = {
+  {"user1@volta.view", "password123", "0nkCeSiTQbcTEhEMcUhQwYT39U72"},
+  {"user2@volta.view", "password123", "F0jfqt20cPXSqJ2nsJeZtseO1qn2"},
+  {"user3@volta.view", "password123", "7yV6eXu6A1ReAXdtqOVMWszmiOD2"}
+};
+const int NUM_COMMUNITIES = sizeof(communities) / sizeof(communities[0]);
+
+// -------- 3. SENSOR & DATA VARS (SIMULATED) --------
+// In your final code, replace these with your actual sensor reading functions.
 float voltage = 230.0;
 float current = 1.5;
 float temperature = 25.0;
 int ldr = 750;
-String idToken; 
 
 // -------- FUNCTION DECLARATIONS --------
 void connectToWiFi();
-bool getAuthToken();
-void sendDataToFirestore();
+String getAuthToken(const char* email, const char* password);
+void sendDataToFirestore(String& idToken, const char* userId);
 String getTimestamp();
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  Serial.println("\\n=== VoltaView ESP32 - Community ${community} ===");
+  Serial.println("\\n=== VoltaView ESP32 Multi-Community Sender ===");
   
   connectToWiFi();
-  
-  if (WiFi.status() == WL_CONNECTED) {
-    getAuthToken();
-  }
 }
 
 void loop() {
-  if (WiFi.status() == WL_CONNECTED && idToken.length() > 0) {
-    // Simulate reading new sensor data
-    voltage = 225.0 + (random(0, 200) / 10.0);
-    current = 1.0 + (random(0, 100) / 100.0);
-    temperature = 22.0 + (random(0, 100) / 10.0);
-    ldr = 700 + random(0, 200);
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi disconnected. Trying to reconnect...");
+    connectToWiFi();
+    return;
+  }
 
-    Serial.println("--- Sending new data ---");
-    sendDataToFirestore();
-  } else {
-    Serial.println("Not connected to WiFi or no auth token.");
+  // Loop through each community
+  for (int i = 0; i < NUM_COMMUNITIES; i++) {
+    Serial.printf("\\n--- Processing Community %d (%s) ---\\n", i + 1, communities[i].email);
+
+    // 1. Get Auth Token for the current community's user
+    String idToken = getAuthToken(communities[i].email, communities[i].password);
+
+    if (idToken.length() > 0) {
+      // 2. Simulate reading sensor data for this community
+      // IMPORTANT: Replace this with your actual sensor reading logic for each community.
+      voltage = 225.0 + (random(0, 200) / 10.0);
+      current = 1.0 + (random(0, 100) / 100.0);
+      temperature = 22.0 + (random(0, 100) / 10.0);
+      ldr = 700 + random(0, 200);
+      
+      // 3. Send the data to Firestore
+      sendDataToFirestore(idToken, communities[i].uid);
+      
+    } else {
+      Serial.println("Skipping data send due to auth failure.");
+    }
+    
+    // Brief delay before processing the next community
+    delay(5000); 
   }
   
+  // Wait for a longer period before starting the next full cycle
+  Serial.println("\\n=== Completed Full Cycle. Waiting... ===");
   delay(30000); 
 }
 
@@ -122,7 +126,7 @@ void connectToWiFi() {
   }
 }
 
-bool getAuthToken() {
+String getAuthToken(const char* email, const char* password) {
   Serial.println("Requesting Firebase Auth Token...");
   HTTPClient http;
   
@@ -133,8 +137,8 @@ bool getAuthToken() {
   http.addHeader("Content-Type", "application/json");
 
   JsonDocument doc;
-  doc["email"] = FIREBASE_USER_EMAIL;
-  doc["password"] = FIREBASE_USER_PASSWORD;
+  doc["email"] = email;
+  doc["password"] = password;
   doc["returnSecureToken"] = true;
   String requestBody;
   serializeJson(doc, requestBody);
@@ -145,27 +149,27 @@ bool getAuthToken() {
     String payload = http.getString();
     JsonDocument responseDoc;
     deserializeJson(responseDoc, payload);
-    idToken = responseDoc["idToken"].as<String>();
+    String idToken = responseDoc["idToken"].as<String>();
     if (idToken.length() > 0) {
       Serial.println("Successfully authenticated and got ID token.");
       http.end();
-      return true;
+      return idToken;
     }
   }
   
   Serial.printf("Failed to get auth token. HTTP Code: %d\\n", httpCode);
   Serial.println(http.getString());
   http.end();
-  return false;
+  return "";
 }
 
-void sendDataToFirestore() {
+void sendDataToFirestore(String& idToken, const char* userId) {
   HTTPClient http;
 
   String url = "https://firestore.googleapis.com/v1/projects/";
   url += PROJECT_ID;
   url += "/databases/(default)/documents/users/";
-  url += USER_ID;
+  url += userId;
   url += "/esp32_data";
 
   http.begin(url);
@@ -180,8 +184,6 @@ void sendDataToFirestore() {
   fields["temperature"]["doubleValue"] = temperature;
   fields["ldr"]["integerValue"] = ldr;
   
-  // This part of the code for timestamping is simplified.
-  // A robust implementation would use an NTP client to get accurate time.
   struct timeval tv;
   gettimeofday(&tv, NULL);
   char timestamp[30];
@@ -194,34 +196,20 @@ void sendDataToFirestore() {
   int httpCode = http.POST(requestBody);
 
   if (httpCode > 0) {
-    Serial.printf("Firestore request completed. HTTP Code: %d\\n", httpCode);
+    Serial.printf("Firestore request completed for user %s. HTTP Code: %d\\n", userId, httpCode);
     String payload = http.getString();
-    Serial.println("Response: " + payload);
+    if (httpCode >= 200 && httpCode < 300) {
+      // Success
+    } else {
+      Serial.println("Response: " + payload);
+    }
   } else {
     Serial.printf("Firestore request failed. Error: %s\\n", http.errorToString(httpCode).c_str());
   }
 
   http.end();
 }
-
-// Returns timestamp in ISO 8601 format. This is a fallback.
-String getTimestamp() {
-  time_t now;
-  struct tm timeinfo;
-  if(!getLocalTime(&timeinfo)){
-    Serial.println("Failed to obtain time");
-    return "";
-  }
-  char buf[sizeof "2011-10-08T07:07:09Z"];
-  strftime(buf, sizeof buf, "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
-  return String(buf);
-}
 `;
-  };
-
-  const arduinoCodeA = generateArduinoCode('A');
-  const arduinoCodeB = generateArduinoCode('B');
-  const arduinoCodeC = generateArduinoCode('C');
 
   return (
     <div className="flex flex-col gap-6">
@@ -230,68 +218,32 @@ String getTimestamp() {
         <div>
           <h1 className="text-3xl font-bold">ESP32 Connection Guide</h1>
           <p className="text-muted-foreground">
-            Configuration and code for each community's ESP32 device.
+            A single ESP32 sketch to send data for all three communities.
           </p>
         </div>
       </div>
       
       <Alert>
         <ShieldCheck className="h-4 w-4" />
-        <AlertTitle>Important: Create Users in Firebase</AlertTitle>
+        <AlertTitle>Important: Single Device Configuration</AlertTitle>
         <AlertDescription>
-          This guide provides separate code for each community. You must first create three corresponding users in your Firebase project's Authentication section. The UIDs in the code snippets must match the UIDs for the users you create.
+          This sketch is designed to run on a single ESP32. It will cycle through each community's credentials, authenticating and sending data sequentially. Ensure your device has the sensor logic to provide data for all three communities.
         </AlertDescription>
       </Alert>
 
-      <Tabs defaultValue="community_a" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="community_a"><Users className="mr-2" /> Community A</TabsTrigger>
-          <TabsTrigger value="community_b"><Users className="mr-2" /> Community B</TabsTrigger>
-          <TabsTrigger value="community_c"><Users className="mr-2" /> Community C</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="community_a">
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle>ESP32 Code for Community A</CardTitle>
-              <CardDescription>
-                This Arduino sketch is pre-configured for Community A. You will need to install the `ArduinoJson` library from the Library Manager in your Arduino IDE.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CodeBlock language="cpp" code={arduinoCodeA} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="community_b">
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle>ESP32 Code for Community B</CardTitle>
-              <CardDescription>
-                 This Arduino sketch is pre-configured for Community B. Ensure the UID matches the one for user2@volta.view.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CodeBlock language="cpp" code={arduinoCodeB} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="community_c">
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle>ESP32 Code for Community C</CardTitle>
-              <CardDescription>
-                This Arduino sketch is pre-configured for Community C. Ensure the UID matches the one for user3@volta.view.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CodeBlock language="cpp" code={arduinoCodeC} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <Card>
+        <CardHeader>
+          <CardTitle>Unified ESP32 Code for All Communities</CardTitle>
+          <CardDescription>
+            This Arduino sketch is pre-configured with all user credentials. You will need to install the `ArduinoJson` library from the Library Manager in your Arduino IDE.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CodeBlock language="cpp" code={arduinoCode} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
+
+    
