@@ -48,7 +48,7 @@ const initialMetrics: Omit<DeriveMetricsOutput, 'power'> = {
 
 // This is a server-side check that gets passed to the client
 const isApiKeySet = process.env.NEXT_PUBLIC_IS_GEMINI_API_KEY_SET === 'true';
-const LIVE_THRESHOLD_SECONDS = 15; // Consider offline if no data for 15s
+const LIVE_THRESHOLD_SECONDS = 5; // Consider offline if no data for 5s
 
 export default function Page() {
   const { user } = useUser();
@@ -143,7 +143,7 @@ export default function Page() {
             setCurrentSensorData(null);
             setMetrics(initialMetrics);
         }
-    }, LIVE_THRESHOLD_SECONDS * 500);
+    }, 2500); // Check for staleness every 2.5 seconds
 
     return () => clearInterval(intervalId);
 
@@ -373,3 +373,5 @@ export default function Page() {
       </div>
     </div>
   );
+
+    

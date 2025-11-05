@@ -107,7 +107,7 @@ float irradiance, totalPower, batteryPercent;
 
 // -------- TIMING --------
 unsigned long lastUpload = 0;
-const unsigned long uploadInterval = 5000; // every 5s for better responsiveness
+const unsigned long uploadInterval = 2000; // every 2s for better responsiveness
 
 // -------- FUNCTION DECLARATIONS --------
 void connectToWiFi();
@@ -173,7 +173,6 @@ void loop() {
       String idToken = getAuthToken(communities[i].email, communities[i].password);
       if (idToken.length() > 0) {
         sendDataToFirestore(idToken, communities[i].uid);
-        delay(500); 
       }
     }
   }
@@ -384,3 +383,5 @@ void sendDataToFirestore(String& idToken, const char* userId) {
     </div>
   );
 }
+
+    
