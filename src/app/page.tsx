@@ -84,7 +84,7 @@ export default function Page() {
       const dataTimestamp = latestData.timestamp ? latestData.timestamp.toDate() : new Date(0);
       const isDataFresh = (Date.now() - dataTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
       
-      console.log(`[${selectedCommunity}] New data received. Timestamp: ${latestData.timestamp}, Fresh: ${isDataFresh}`);
+      console.log(`[${selectedCommunity}] New data received. Timestamp: ${dataTimestamp.toISOString()}, Fresh: ${isDataFresh}`);
 
       setIsLive(isDataFresh);
       setCurrentSensorData(latestData);
@@ -184,7 +184,7 @@ export default function Page() {
         </Card>
       )}
 
-      {!isEspDataLoading && !isLive && (
+      {!isEspDataLoading && !currentSensorData && !isLive && (
         <Card>
           <CardHeader>
             <CardTitle>Waiting for Data for {selectedCommunity}</CardTitle>
@@ -342,3 +342,5 @@ export default function Page() {
       </div>
     </div>
   );
+
+    
