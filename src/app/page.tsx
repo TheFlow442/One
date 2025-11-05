@@ -98,8 +98,9 @@ export default function Page() {
       const latestData = espData[0];
       const now = new Date();
       const dataTimestamp = latestData.timestamp?.toDate();
-      
-      if (dataTimestamp && (now.getTime() - dataTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS) {
+      const isDataFresh = dataTimestamp && (now.getTime() - dataTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
+
+      if (isDataFresh) {
         setIsLive(true);
         const sensorInput: Omit<DeriveMetricsInput, 'communityId'> = {
           voltage: latestData.voltage || 0,
@@ -107,38 +108,48 @@ export default function Page() {
           temperature: latestData.temperature || 0,
           ldr: latestData.ldr || 0,
         };
-        // Update sensor data and call metrics
         setCurrentSensorData(sensorInput);
         getMetrics(sensorInput);
       } else {
-         setIsLive(false); // Data is too old, consider it offline
-         setCurrentSensorData(null); // Clear sensor data when offline
+         // Data is stale
+         setIsLive(false);
+         setCurrentSensorData(null);
          setMetrics(initialMetrics);
+         setLoading(false); // Not loading if data is stale
       }
     } else if (!isEspDataLoading) {
-      setLoading(false);
+      // No data and not loading
       setIsLive(false);
       setCurrentSensorData(null);
       setMetrics(initialMetrics);
+      setLoading(false);
     }
     
     // Set up an interval to check the liveness status periodically
     const intervalId = setInterval(() => {
-      if (espData && espData.length > 0) {
-        const latestData = espData[0];
-        const now = new Date();
-        const dataTimestamp = latestData.timestamp?.toDate();
-        if (dataTimestamp && (now.getTime() - dataTimestamp.getTime()) / 1000 > LIVE_THRESHOLD_SECONDS) {
-          setIsLive(false);
+        if (espData && espData.length > 0) {
+            const latestData = espData[0];
+            const now = new Date();
+            const dataTimestamp = latestData.timestamp?.toDate();
+            if (!dataTimestamp || (now.getTime() - dataTimestamp.getTime()) / 1000 > LIVE_THRESHOLD_SECONDS) {
+                // If data becomes stale, update liveness
+                if (isLive) {
+                    setIsLive(false);
+                    setCurrentSensorData(null);
+                    setMetrics(initialMetrics);
+                }
+            }
+        } else if (isLive) {
+            // If there's no data at all, but we were previously live
+            setIsLive(false);
+            setCurrentSensorData(null);
+            setMetrics(initialMetrics);
         }
-      } else {
-        setIsLive(false);
-      }
-    }, LIVE_THRESHOLD_SECONDS * 1000);
+    }, LIVE_THRESHOLD_SECONDS * 500); // Check every half threshold
 
     return () => clearInterval(intervalId);
 
-  }, [espData, isEspDataLoading, selectedCommunity]);
+  }, [espData, isEspDataLoading, selectedCommunity, isLive]);
 
   const power = currentSensorData ? currentSensorData.voltage * currentSensorData.current : 0;
   const solarIrradiance = currentSensorData ? (currentSensorData.ldr / 1023) * 1000 : 0;
@@ -193,7 +204,7 @@ export default function Page() {
       
        {isEspDataLoading && !currentSensorData && (
           <Card>
-            <CardContent>
+             <CardContent className="pt-6">
               <p className="text-muted-foreground">Connecting to your ESP32 device...</p>
             </CardContent>
           </Card>
@@ -223,7 +234,7 @@ export default function Page() {
           <CardContent>
             {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.voltage.toFixed(1)} V</div>}
             <p className="text-xs text-muted-foreground">
-              {isEspDataLoading || !currentSensorData ? 'Waiting for data...' : 'Live Reading'}
+              {isEspDataLoading && !currentSensorData ? 'Waiting for data...' : isLive ? 'Live Reading' : 'Offline'}
             </p>
           </CardContent>
         </Card>
@@ -235,7 +246,7 @@ export default function Page() {
           <CardContent>
             {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.current.toFixed(2)} A</div>}
              <p className="text-xs text-muted-foreground">
-              {isEspDataLoading || !currentSensorData ? 'Waiting for data...' : 'Live Reading'}
+              {isEspDataLoading && !currentSensorData ? 'Waiting for data...' : isLive ? 'Live Reading' : 'Offline'}
             </p>
           </CardContent>
         </Card>
@@ -247,7 +258,7 @@ export default function Page() {
           <CardContent>
             {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{power.toFixed(0)} W</div>}
              <p className="text-xs text-muted-foreground">
-              {isEspDataLoading || !currentSensorData ? 'Waiting for data...' : 'Live Calculation'}
+              {isEspDataLoading && !currentSensorData ? 'Waiting for data...' : isLive ? 'Live Calculation' : 'Offline'}
             </p>
           </CardContent>
         </Card>
@@ -259,7 +270,7 @@ export default function Page() {
           <CardContent>
              {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{currentSensorData.temperature.toFixed(1)} °C</div>}
              <p className="text-xs text-muted-foreground">
-              {isEspDataLoading || !currentSensorData ? 'Waiting for data...' : 'Live Reading'}
+              {isEspDataLoading && !currentSensorData ? 'Waiting for data...' : isLive ? 'Live Reading' : 'Offline'}
             </p>
           </CardContent>
         </Card>
@@ -269,8 +280,8 @@ export default function Page() {
             <Battery className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{metrics.batteryHealth.toFixed(1)} %</div>}
-            <p className="text-xs text-muted-foreground">{loading ? 'Analyzing...' : metrics.batteryState}</p>
+            {loading || !isLive ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{metrics.batteryHealth.toFixed(1)} %</div>}
+            <p className="text-xs text-muted-foreground">{loading || !isLive ? 'Analyzing...' : metrics.batteryState}</p>
           </CardContent>
         </Card>
         <Card>
@@ -279,8 +290,8 @@ export default function Page() {
             <Info className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{metrics.timeToFull}</div>}
-            <p className="text-xs text-muted-foreground">{loading ? 'Analyzing...' : (metrics.batteryState === 'Charging' ? 'Charging' : 'Not charging')}</p>
+            {loading || !isLive ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{metrics.timeToFull}</div>}
+            <p className="text-xs text-muted-foreground">{loading || !isLive ? 'Analyzing...' : (metrics.batteryState === 'Charging' ? 'Charging' : 'Not charging')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -291,7 +302,7 @@ export default function Page() {
           <CardContent>
             {isEspDataLoading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{solarIrradiance.toFixed(0)} <span className='text-lg'>W/m²</span></div>}
             <p className="text-xs text-muted-foreground">
-              {isEspDataLoading || !currentSensorData ? 'Waiting for data...' : 'Live Calculation'}
+              {isEspDataLoading && !currentSensorData ? 'Waiting for data...' : isLive ? 'Live Calculation' : 'Offline'}
             </p>
           </CardContent>
         </Card>
@@ -303,7 +314,7 @@ export default function Page() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-             {loading ? (
+             {loading || !isLive ? (
               Array.from({ length: 2 }).map((_, index) => (
                 <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-card border">
                   <div className="flex items-center gap-3">
@@ -367,3 +378,6 @@ export default function Page() {
 
     
 
+
+
+    
