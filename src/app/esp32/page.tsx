@@ -190,8 +190,6 @@ void loop() {
       }
     }
   }
-
-  delay(1000);
 }
 
 // -------- SENSOR FUNCTIONS --------
@@ -235,6 +233,14 @@ void updateSimulatedData() {
     struct tm timeinfo;
     time(&now);
     localtime_r(&now, &timeinfo);
+    
+    // Check if time is valid. If not, NTP sync probably failed.
+    if(timeinfo.tm_year < 100) { // Year will be < 1900 if time is not set
+        Serial.println("Time not synced, skipping simulation update.");
+        syncTime(); // Attempt to re-sync time
+        return;
+    }
+
     float hour_of_day = timeinfo.tm_hour + timeinfo.tm_min / 60.0;
     
     // Simulate a sine wave for solar irradiance based on time of day
@@ -266,11 +272,11 @@ void updateSimulatedData() {
 
     // Simulate community loads
     comA_V = 225.0 + random(-2, 2);
-    comA_I = 0.5 + random(-2, 2) / 10.0;
+    comA_I = 0.5 + sin(hour_of_day / 2.0) * 0.2 + random(-1, 1) / 10.0;
     comB_V = 225.0 + random(-2, 2);
-    comB_I = 0.4 + random(-2, 2) / 10.0;
+    comB_I = 0.4 + sin(hour_of_day / 2.5) * 0.3 + random(-1, 1) / 10.0;
     comC_V = 225.0 + random(-2, 2);
-    comC_I = 0.6 + random(-2, 2) / 10.0;
+    comC_I = 0.6 + sin(hour_of_day / 3.0) * 0.25 + random(-1, 1) / 10.0;
 }
 
 
@@ -320,7 +326,8 @@ void syncTime() {
   if(!getLocalTime(&timeinfo)){
     Serial.println(" Failed to obtain time. Retrying...");
     delay(1000);
-    syncTime();
+    // Do not recursively call syncTime() here to avoid stack overflow.
+    // The main loop will handle retries if time is not synced.
     return;
   }
   Serial.println(" Time synchronized.");
