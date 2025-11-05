@@ -29,8 +29,8 @@ export default function ESP32Page() {
 #include "time.h"
 
 // -------- WIFI & FIREBASE CONFIG --------
-const char* WIFI_SSID = "op";
-const char* WIFI_PASSWORD = "987654321";
+const char* WIFI_SSID = "DESKTOP";
+const char* WIFI_PASSWORD = "1234567890";
 const char* WEB_API_KEY = "${apiKey}";
 const char* PROJECT_ID = "${projectId}";
 
@@ -357,7 +357,7 @@ void sendDataToFirestore(String& idToken, const char* userId) {
         <ShieldCheck className="h-4 w-4" />
         <AlertTitle>Important: Single Device Configuration</AlertTitle>
         <AlertDescription>
-          This sketch is designed to run on a single ESP32. It will cycle through each community's credentials, authenticating and sending data sequentially. Remember to replace `op` and `987654321` with your actual network credentials.
+          This sketch is designed to run on a single ESP32. It will cycle through each community's credentials, authenticating, and sending data sequentially. Remember to replace `DESKTOP` and `1234567890` with your actual network credentials.
         </AlertDescription>
       </Alert>
 

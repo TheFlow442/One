@@ -59,9 +59,9 @@ export default function CommunityBPage() {
   const communityNode = latestData ? {
       id: 'NODE-B01',
       status: 'online',
-      voltage: latestData.comB_V,
-      current: latestData.comB_I,
-      power: latestData.comB_V * latestData.comB_I
+      voltage: latestData.comB_V || 0,
+      current: latestData.comB_I || 0,
+      power: (latestData.comB_V || 0) * (latestData.comB_I || 0)
   } : null;
 
   const totalConsumption = communityNode ? communityNode.power / 1000 : 0;
@@ -71,8 +71,8 @@ export default function CommunityBPage() {
     .map(d => ({
         // Format timestamp to a readable time string
         day: d.timestamp ? new Date(d.timestamp.toDate()).toLocaleTimeString() : 'N/A',
-        consumption: (d.comB_V * d.comB_I) / 1000, // in kW
-        generation: (d.irradiance / 1000) * 1.5, // Estimated generation in kW
+        consumption: ((d.comB_V || 0) * (d.comB_I || 0)) / 1000, // in kW
+        generation: ((d.irradiance || 0) / 1000) * 1.5, // Estimated generation in kW
     }))
     .reverse(); // Reverse to show chronological order
 
