@@ -46,17 +46,16 @@ const initialMetrics: Omit<DeriveMetricsOutput, 'power'> = {
   maintenanceAlerts: [],
 };
 
-// This is a server-side check that gets passed to the client
 const isApiKeySet = process.env.NEXT_PUBLIC_IS_GEMINI_API_KEY_SET === 'true';
-const LIVE_THRESHOLD_SECONDS = 5; // Consider offline if no data for 5s
+const LIVE_THRESHOLD_SECONDS = 5; // Data is stale if older than 5 seconds
 
 export default function Page() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [metrics, setMetrics] = useState<Omit<DeriveMetricsOutput, 'power'>>(initialMetrics);
-  const [currentSensorData, setCurrentSensorData] = useState<any>(null); // Using 'any' to accommodate new fields
-  const [loadingMetrics, setLoadingMetrics] = useState(true);
+  const [currentSensorData, setCurrentSensorData] = useState<any>(null);
   const [isLive, setIsLive] = useState(false);
+  const [isDerivingMetrics, setIsDerivingMetrics] = useState(false);
   const [selectedCommunity, setSelectedCommunity] = useState<Community>('Community A');
 
   const selectedUserId = communityUsers[selectedCommunity];
@@ -74,31 +73,24 @@ export default function Page() {
 
   useEffect(() => {
     const processData = async () => {
-      if (isEspDataLoading) {
-        setLoadingMetrics(true);
-        return;
-      }
-      
       if (!espData || espData.length === 0) {
         setIsLive(false);
         setCurrentSensorData(null);
         setMetrics(initialMetrics);
-        setLoadingMetrics(false);
         return;
       }
       
       const latestData = espData[0];
+      const dataTimestamp = latestData.timestamp ? new Date(latestData.timestamp) : new Date(0);
+      const isDataFresh = (Date.now() - dataTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
       
-      const now = new Date();
-      // Firestore string timestamp needs to be parsed correctly
-      const dataTimestamp = latestData.timestamp ? new Date(latestData.timestamp) : null;
-      const isDataFresh = dataTimestamp && (now.getTime() - dataTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
+      console.log(`[${selectedCommunity}] New data received. Timestamp: ${latestData.timestamp}, Fresh: ${isDataFresh}`);
 
       setIsLive(isDataFresh);
       setCurrentSensorData(latestData);
       
       if (isDataFresh && isApiKeySet) {
-        setLoadingMetrics(true);
+        setIsDerivingMetrics(true);
         try {
           const input: DeriveMetricsInput = {
             communityId: selectedCommunity,
@@ -110,28 +102,31 @@ export default function Page() {
             irradiance: latestData.irradiance || 0,
           };
           const result = await deriveMetrics(input);
-          const { power, ...restOfMetrics } = result;
+          const { power, ...restOfMetrics } = result; // Exclude power as it's already in sensor data
           setMetrics(restOfMetrics);
         } catch (e: any) {
           console.error("Error deriving metrics:", e);
           setMetrics(initialMetrics); // Reset on error
         } finally {
-          setLoadingMetrics(false);
+          setIsDerivingMetrics(false);
         }
-      } else {
+      } else if (!isDataFresh) {
+        // If data is stale, reset metrics
         setMetrics(initialMetrics);
-        setLoadingMetrics(false);
       }
     };
     
     processData();
 
-  }, [espData, isEspDataLoading, selectedCommunity]);
+  }, [espData, selectedCommunity]);
 
-  const power = currentSensorData ? currentSensorData.totalPower : 0;
-  const solarIrradiance = currentSensorData ? currentSensorData.irradiance : 0;
+  const isLoading = isEspDataLoading || (isLive && isDerivingMetrics);
+  const power = currentSensorData?.totalPower ?? 0;
+  const solarIrradiance = currentSensorData?.irradiance ?? 0;
+  const voltage = currentSensorData?.inverterV ?? 0;
+  const current = currentSensorData?.inverterI ?? 0;
+  const temperature = currentSensorData?.batteryTemp ?? 0;
 
-  const isLoading = isEspDataLoading || (isLive && loadingMetrics);
 
   return (
     <div className="flex flex-col gap-6">
@@ -141,7 +136,7 @@ export default function Page() {
           <div>
             <div className="flex items-center gap-4">
               <CardTitle className="text-2xl">Smart Solar Microgrid Management</CardTitle>
-              {isLive && (
+              {isLive && !isEspDataLoading && (
                 <Badge variant="outline" className="border-green-400 bg-green-400/10 text-green-300">
                   <span className="relative flex h-2 w-2 mr-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -194,7 +189,7 @@ export default function Page() {
           <CardHeader>
             <CardTitle>Waiting for Data for {selectedCommunity}</CardTitle>
             <CardDescription>
-              No data has been received from the device recently. Please ensure your ESP32 device is on, connected, and sending data.
+              No data has been received from the device recently. Please ensure your ESP32 device is on, connected, and sending data. The firmware guide includes a simulation mode if you don't have hardware.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -255,7 +250,7 @@ export default function Page() {
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{(currentSensorData?.inverterV || 0).toFixed(2)} V</div>
+                <div className="text-2xl font-bold">{voltage.toFixed(2)} V</div>
                 <p className="text-xs text-muted-foreground">Live AC output</p>
               </>
             }
@@ -269,7 +264,7 @@ export default function Page() {
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{(currentSensorData?.inverterI || 0).toFixed(2)} A</div>
+                <div className="text-2xl font-bold">{current.toFixed(2)} A</div>
                 <p className="text-xs text-muted-foreground">Live AC current draw</p>
               </>
             }
@@ -283,7 +278,7 @@ export default function Page() {
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{(currentSensorData?.batteryTemp || 0).toFixed(1)} °C</div>
+                <div className="text-2xl font-bold">{temperature.toFixed(1)} °C</div>
                 <p className="text-xs text-muted-foreground">Live battery temperature</p>
               </>
             }
@@ -347,7 +342,3 @@ export default function Page() {
       </div>
     </div>
   );
-
-    
-
-    

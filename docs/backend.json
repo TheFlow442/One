@@ -97,7 +97,7 @@
         "comC_V": { "type": "number", "description": "Community C line voltage (V)." },
         "comC_I": { "type": "number", "description": "Community C line current (A)." }
       },
-      "required": ["timestamp", "inverterV", "inverterI", "batteryTemp", "irradiance"]
+      "required": ["timestamp", "inverterV", "inverterI", "batteryTemp", "irradiance", "batteryPercent", "totalPower", "panelV", "panelI", "batteryV", "batteryI"]
     }
   },
   "auth": {
@@ -134,6 +134,3 @@
     "reasoning": "The Firestore data structure is designed to ensure authorization independence, clarity, and scalability. User data is stored under `/users/{userId}`. ESP32 data is stored as a subcollection at `/users/{userId}/esp32_data/{esp32DataId}`. This structure maintains a clear ownership model where each user's sensor data is nested under their profile, allowing for intuitive and secure data access using Firestore's security rules."
   }
 }
-
-
-    

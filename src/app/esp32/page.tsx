@@ -34,8 +34,8 @@ export default function ESP32Page() {
 #define USE_SIMULATED_DATA true
 
 // -------- WIFI & FIREBASE CONFIG --------
-const char* WIFI_SSID = "DESKTOP";
-const char* WIFI_PASSWORD = "1234567890";
+const char* WIFI_SSID = "YOUR_WIFI_SSID";
+const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 const char* WEB_API_KEY = "${apiKey}";
 const char* PROJECT_ID = "${projectId}";
 
@@ -137,6 +137,7 @@ void setup() {
   
   #if USE_SIMULATED_DATA
     randomSeed(analogRead(0));
+    Serial.println("Initialized in simulation mode.");
   #else
     // Initialize real sensors
     battTempSensor.begin();
@@ -163,6 +164,7 @@ void setup() {
     emonComB_I.current(COMB_CURR_PIN, AC_CAL);
     emonComC_V.voltage(COMC_VOLT_PIN, ZMPT_CAL, 1.7);
     emonComC_I.current(COMC_CURR_PIN, AC_CAL);
+    Serial.println("Initialized hardware sensors.");
   #endif
 }
 
@@ -197,16 +199,19 @@ void updateSensors() {
   #if USE_SIMULATED_DATA
     updateSimulatedData();
   #else
+    // Solar readings
     panelV = readVoltageDivider(PANEL_VOLT_PIN);
     panelI = emonPanelCurrent.calcIrms(1480);
     irradiance = map(analogRead(IRRADIANCE_PIN), 0, 4095, 0, 1000);
 
+    // Battery readings
     batteryV = readVoltageDivider(BATTERY_VOLT_PIN);
     batteryI = emonBatteryCurrent.calcIrms(1480);
     battTempSensor.requestTemperatures();
     batteryTemp = battTempSensor.getTempCByIndex(0);
     batteryPercent = constrain(((batteryV - 11.8) / (14.4 - 11.8)) * 100, 0, 100);
 
+    // Inverter readings
     emonInverterVoltage.calcVI(20, 2000);
     inverterV = emonInverterVoltage.Vrms;
     inverterI = emonInverterCurrent.calcIrms(1480);
@@ -214,6 +219,7 @@ void updateSensors() {
     inverterTemp = invTempSensor.getTempCByIndex(0);
     totalPower = calcPower(inverterV, inverterI);
 
+    // Community lines
     emonComA_V.calcVI(20, 2000); comA_V = emonComA_V.Vrms; comA_I = emonComA_I.calcIrms(1480);
     emonComB_V.calcVI(20, 2000); comB_V = emonComB_V.Vrms; comB_I = emonComB_I.calcIrms(1480);
     emonComC_V.calcVI(20, 2000); comC_V = emonComC_V.Vrms; comC_I = emonComC_I.calcIrms(1480);
@@ -269,7 +275,7 @@ void updateSimulatedData() {
 
 
 void controlRelays() {
-  bool active = (batteryV > 12.0 && panelV > 15.0);
+  bool active = (batteryV > 12.0);
   #if !USE_SIMULATED_DATA
     digitalWrite(RELAY_A, active);
     digitalWrite(RELAY_B, active);
@@ -367,7 +373,7 @@ void sendDataToFirestore(String& idToken, const char* userId) {
   if(getLocalTime(&timeinfo)){
     char timestamp[30];
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
-    f["timestamp"]["stringValue"] = timestamp; // Firestore expects a string for serverValue timestamp
+    f["timestamp"]["stringValue"] = timestamp;
   } else {
     Serial.println("Failed to get local time for timestamp!");
   }
@@ -437,12 +443,12 @@ void sendDataToFirestore(String& idToken, const char* userId) {
               <ShieldCheck className="h-4 w-4" />
               <AlertTitle>Your Project Credentials</AlertTitle>
               <AlertDescription>
-                The code below is pre-configured with your unique Firebase project ID and API key.
+                The code below is pre-configured with your unique Firebase project ID and API key. Remember to update your WiFi credentials.
               </AlertDescription>
             </Alert>
           <div>
             <h3 className="text-lg font-semibold">3. Upload Firmware</h3>
-            <p className="text-muted-foreground">Copy and paste the code below into a new Arduino sketch, update your <code className="bg-muted p-1 rounded-sm">WIFI_SSID</code> and <code className="bg-muted p-1 rounded-sm">WIFI_PASSWORD</code>, and upload it to your ESP32. Set <code className='bg-muted p-1 rounded-sm'>USE_SIMULATED_DATA</code> to <code className='bg-muted p-1 rounded-sm'>false</code> if you have real sensors connected.</p>
+            <p className="text-muted-foreground">Copy and paste the code below into a new Arduino sketch. Set <code className="bg-muted p-1 rounded-sm">USE_SIMULATED_DATA</code> to <code className='bg-muted p-1 rounded-sm'>false</code> if you have real sensors connected. The firmware is set to simulation mode by default so you can see your dashboard working immediately.</p>
           </div>
           <CodeBlock code={arduinoCode} language="cpp" />
         </CardContent>
@@ -450,7 +456,3 @@ void sendDataToFirestore(String& idToken, const char* userId) {
     </div>
   );
 }
-
-    
-
-    
