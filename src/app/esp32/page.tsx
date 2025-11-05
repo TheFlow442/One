@@ -13,22 +13,24 @@ export default function ESP32Page() {
   const apiKey = firebaseConfig.apiKey;
 
   const generateArduinoCode = (community: 'A' | 'B' | 'C') => {
-    let userEmail, userPassword;
+    let userEmail, userPassword, userId;
     switch (community) {
       case 'A':
         userEmail = 'user1@volta.view';
         userPassword = 'password123';
+        userId = '0nkCeSiTQbcTEhEMcUhQwYT39U72';
         break;
       case 'B':
         userEmail = 'user2@volta.view';
         userPassword = 'password123';
+        userId = `REPLACE_WITH_UID_FOR_${userEmail}`;
         break;
       case 'C':
         userEmail = 'user3@volta.view';
         userPassword = 'password123';
+        userId = `REPLACE_WITH_UID_FOR_${userEmail}`;
         break;
     }
-    const userId = `REPLACE_WITH_UID_FOR_${userEmail}`;
 
     return `
 /*
@@ -54,7 +56,7 @@ const char* WIFI_PASSWORD = "987654321";
 // This should be the user dedicated to Community ${community}
 const char* FIREBASE_USER_EMAIL = "${userEmail}";
 const char* FIREBASE_USER_PASSWORD = "${userPassword}";
-const char* USER_ID = "${userId}"; // <-- IMPORTANT: REPLACE THIS
+const char* USER_ID = "${userId}"; // <-- IMPORTANT: REPLACE THIS if needed
 
 // These are specific to your Firebase project
 const char* WEB_API_KEY = "${apiKey}";
