@@ -23,36 +23,21 @@ import { CommunityConsumptionGenerationChart } from '@/components/dashboard/comm
 import { Users, Zap, User, AlertTriangle, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useRtdbValue } from '@/firebase/realtimedb/use-rtdb-value';
 
 const COMMUNITY_C_USER_ID = '7yV6eXu6A1ReAXdtqOVMWszmiOD2';
-const DATA_LIMIT = 20;
 
 export default function CommunityCPage() {
-  const firestore = useFirestore();
   const [latestData, setLatestData] = useState<any>(null);
-  const [historicalData, setHistoricalData] = useState<any[]>([]);
 
-  const espDataQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(
-      collection(firestore, 'users', COMMUNITY_C_USER_ID, 'esp32_data'),
-      orderBy('timestamp', 'desc'),
-      limit(DATA_LIMIT)
-    );
-  }, [firestore]);
-
-  const { data: espData, isLoading: isEspDataLoading } = useCollection<any>(espDataQuery);
+  const { data: espData, isLoading: isEspDataLoading } = useRtdbValue<any>(`esp32_data/${COMMUNITY_C_USER_ID}`);
 
   useEffect(() => {
-    if (espData && espData.length > 0) {
-      setLatestData(espData[0]); // The first item is the latest
-      setHistoricalData(espData); // The whole array for the chart
+    if (espData) {
+      setLatestData(espData);
     } else {
       setLatestData(null);
-      setHistoricalData([]);
     }
   }, [espData]);
   
@@ -67,14 +52,11 @@ export default function CommunityCPage() {
   const totalConsumption = communityNode ? communityNode.power / 1000 : 0;
   const onlineNodes = communityNode ? 1 : 0;
   
-  const chartData = historicalData
-    .map(d => ({
-        // Format timestamp to a readable time string
-        day: d.timestamp ? d.timestamp.toDate().toLocaleTimeString() : 'N/A',
-        consumption: ((d.comC_V || 0) * (d.comC_I || 0)) / 1000, // in kW
-        generation: ((d.irradiance || 0) / 1000) * 1.5, // Estimated generation in kW
-    }))
-    .reverse(); // Reverse to show chronological order
+  const chartData = latestData ? [{
+      day: latestData.timestamp ? new Date(latestData.timestamp).toLocaleTimeString() : 'N/A',
+      consumption: ((latestData.comC_V || 0) * (latestData.comC_I || 0)) / 1000, // in kW
+      generation: ((latestData.irradiance || 0) / 1000) * 1.5, // Estimated generation in kW
+  }] : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -206,7 +188,7 @@ export default function CommunityCPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[400px]">
-          {isEspDataLoading && historicalData.length === 0 ? <Skeleton className="h-full w-full"/> : 
+          {isEspDataLoading && chartData.length === 0 ? <Skeleton className="h-full w-full"/> : 
             <CommunityConsumptionGenerationChart data={chartData} />
           }
         </CardContent>

@@ -15,8 +15,8 @@ export default function ESP32Page() {
 /*
  * VoltaView ESP32 Integrated Firmware
  * - Reads real hardware sensors OR generates simulated data
- * - Sends live data to Firebase Firestore for multiple community users
- * - Uses WiFi + REST API (no external Firebase library)
+ * - Sends live data to Firebase Realtime Database for multiple community users
+ * - Uses WiFi + REST API
  * - Includes NTP time synchronization for accurate timestamps
  */
 
@@ -29,8 +29,6 @@ export default function ESP32Page() {
 #include "time.h"
 
 // -------- SIMULATION MODE --------
-// Set to true to send simulated data instead of reading hardware sensors.
-// Useful for testing the cloud and web app without physical hardware.
 #define USE_SIMULATED_DATA true
 
 // -------- WIFI & FIREBASE CONFIG --------
@@ -114,13 +112,13 @@ float irradiance, totalPower, batteryPercent;
 
 // -------- TIMING --------
 unsigned long lastUpload = 0;
-const unsigned long uploadInterval = 2000; // every 2s for better responsiveness
+const unsigned long uploadInterval = 2000;
 
 // -------- FUNCTION DECLARATIONS --------
 void connectToWiFi();
 void syncTime();
 String getAuthToken(const char* email, const char* password);
-void sendDataToFirestore(String& idToken, const char* userId);
+void sendDataToRealtimeDB(String& idToken, const char* userId);
 void updateSensors();
 void controlRelays();
 float readVoltageDivider(int pin);
@@ -130,7 +128,7 @@ void updateSimulatedData();
 // -------- SETUP --------
 void setup() {
   Serial.begin(115200);
-  Serial.println("\\n=== VoltaView ESP32 Integrated Firmware ===");
+  Serial.println("\\n=== VoltaView ESP32 - Realtime Database Firmware ===");
 
   connectToWiFi();
   syncTime();
@@ -139,25 +137,18 @@ void setup() {
     randomSeed(analogRead(0));
     Serial.println("Initialized in simulation mode.");
   #else
-    // Initialize real sensors
     battTempSensor.begin();
     invTempSensor.begin();
-
-    // Relays
     pinMode(RELAY_A, OUTPUT);
     pinMode(RELAY_B, OUTPUT);
     pinMode(RELAY_C, OUTPUT);
     digitalWrite(RELAY_A, LOW);
     digitalWrite(RELAY_B, LOW);
     digitalWrite(RELAY_C, LOW);
-
-    // Energy monitors
     emonPanelCurrent.current(PANEL_CURR_PIN, AC_CAL);
     emonBatteryCurrent.current(BATTERY_CURR_PIN, AC_CAL);
-
     emonInverterVoltage.voltage(INV_VOLT_PIN, ZMPT_CAL, 1.7);
     emonInverterCurrent.current(INV_CURR_PIN, AC_CAL);
-
     emonComA_V.voltage(COMA_VOLT_PIN, ZMPT_CAL, 1.7);
     emonComA_I.current(COMA_CURR_PIN, AC_CAL);
     emonComB_V.voltage(COMB_VOLT_PIN, ZMPT_CAL, 1.7);
@@ -183,10 +174,9 @@ void loop() {
   if (millis() - lastUpload > uploadInterval) {
     lastUpload = millis();
     for (int i = 0; i < NUM_COMMUNITIES; i++) {
-      Serial.printf("\\n--- Uploading data for %s ---\\n", communities[i].email);
       String idToken = getAuthToken(communities[i].email, communities[i].password);
       if (idToken.length() > 0) {
-        sendDataToFirestore(idToken, communities[i].uid);
+        sendDataToRealtimeDB(idToken, communities[i].uid);
       }
     }
   }
@@ -197,86 +187,68 @@ void updateSensors() {
   #if USE_SIMULATED_DATA
     updateSimulatedData();
   #else
-    // Solar readings
     panelV = readVoltageDivider(PANEL_VOLT_PIN);
     panelI = emonPanelCurrent.calcIrms(1480);
     irradiance = map(analogRead(IRRADIANCE_PIN), 0, 4095, 0, 1000);
-
-    // Battery readings
     batteryV = readVoltageDivider(BATTERY_VOLT_PIN);
     batteryI = emonBatteryCurrent.calcIrms(1480);
     battTempSensor.requestTemperatures();
     batteryTemp = battTempSensor.getTempCByIndex(0);
     batteryPercent = constrain(((batteryV - 11.8) / (14.4 - 11.8)) * 100, 0, 100);
-
-    // Inverter readings
     emonInverterVoltage.calcVI(20, 2000);
     inverterV = emonInverterVoltage.Vrms;
     inverterI = emonInverterCurrent.calcIrms(1480);
     invTempSensor.requestTemperatures();
     inverterTemp = invTempSensor.getTempCByIndex(0);
     totalPower = calcPower(inverterV, inverterI);
-
-    // Community lines
     emonComA_V.calcVI(20, 2000); comA_V = emonComA_V.Vrms; comA_I = emonComA_I.calcIrms(1480);
     emonComB_V.calcVI(20, 2000); comB_V = emonComB_V.Vrms; comB_I = emonComB_I.calcIrms(1480);
     emonComC_V.calcVI(20, 2000); comC_V = emonComC_V.Vrms; comC_I = emonComC_I.calcIrms(1480);
   #endif
-
-  Serial.printf("Panel: %.2fV %.2fA | Batt: %.2fV %.2fA %.2f°C | Inv: %.2fV %.2fA %.2f°C\\n",
-                panelV, panelI, batteryV, batteryI, batteryTemp, inverterV, inverterI, inverterTemp);
 }
 
 void updateSimulatedData() {
-    // Simulate time-of-day for realistic solar data
     time_t now;
     struct tm timeinfo;
     time(&now);
     localtime_r(&now, &timeinfo);
     
-    // Check if time is valid. If not, NTP sync probably failed.
-    if(timeinfo.tm_year < 100) { // Year will be < 1900 if time is not set
-        Serial.println("Time not synced, skipping simulation update.");
-        syncTime(); // Attempt to re-sync time
-        return;
+    if(timeinfo.tm_year < 100) {
+        Serial.println("Time not synced, using fallback for simulation.");
+        irradiance = 500 + random(-100, 100); // Use a baseline irradiance
+    } else {
+        float hour_of_day = timeinfo.tm_hour + timeinfo.tm_min / 60.0;
+        float sine_wave = sin((hour_of_day - 6) * PI / 12);
+        irradiance = (sine_wave > 0) ? 300 + (sine_wave * 600) + random(-50, 50) : 0;
     }
-
-    float hour_of_day = timeinfo.tm_hour + timeinfo.tm_min / 60.0;
-    
-    // Simulate a sine wave for solar irradiance based on time of day
-    float sine_wave = sin((hour_of_day - 6) * PI / 12); // Peaks at noon (12)
-    irradiance = (sine_wave > 0) ? 300 + (sine_wave * 600) + random(-50, 50) : 0;
     irradiance = max(0.0f, irradiance);
 
     panelV = 16.0 + (irradiance / 1000.0) * 2.0 + random(-10, 10) / 10.0;
     panelI = (irradiance / 1000.0) * 5.0 + random(-2, 2) / 10.0;
     
-    // Simulate battery charging/discharging
-    if (irradiance > 200) { // Charging during the day
+    if (irradiance > 200) {
         batteryI = 1.0 + (irradiance / 1000) * 1.5 + random(0, 5) / 10.0;
         batteryV = 13.0 + (irradiance / 1000) * 1.4;
         batteryTemp = 20.0 + (irradiance / 1000) * 10 + random(-2, 2);
-    } else { // Discharging at night
-        batteryI = -2.0 - random(0, 10) / 10.0; // Negative for discharging
+    } else {
+        batteryI = -2.0 - random(0, 10) / 10.0;
         batteryV = 12.5 - random(0, 5)/10.0;
         batteryTemp = 18.0 + random(-2, 2);
     }
     batteryV = constrain(batteryV, 11.8, 14.4);
     batteryPercent = constrain(((batteryV - 11.8) / (14.4 - 11.8)) * 100, 0, 100);
 
-    // Simulate inverter and load
     inverterV = 225.0 + random(-5, 5);
     inverterI = 1.5 + random(-5, 5) / 10.0;
     inverterTemp = 35.0 + random(-5, 5);
     totalPower = calcPower(inverterV, inverterI);
 
-    // Simulate community loads
     comA_V = 225.0 + random(-2, 2);
-    comA_I = 0.5 + sin(hour_of_day / 2.0) * 0.2 + random(-1, 1) / 10.0;
+    comA_I = 0.5 + sin((timeinfo.tm_hour + timeinfo.tm_min / 60.0) / 2.0) * 0.2 + random(-1, 1) / 10.0;
     comB_V = 225.0 + random(-2, 2);
-    comB_I = 0.4 + sin(hour_of_day / 2.5) * 0.3 + random(-1, 1) / 10.0;
+    comB_I = 0.4 + sin((timeinfo.tm_hour + timeinfo.tm_min / 60.0) / 2.5) * 0.3 + random(-1, 1) / 10.0;
     comC_V = 225.0 + random(-2, 2);
-    comC_I = 0.6 + sin(hour_of_day / 3.0) * 0.25 + random(-1, 1) / 10.0;
+    comC_I = 0.6 + sin((timeinfo.tm_hour + timeinfo.tm_min / 60.0) / 3.0) * 0.25 + random(-1, 1) / 10.0;
 }
 
 
@@ -320,17 +292,14 @@ void connectToWiFi() {
 }
 
 void syncTime() {
-  Serial.print("Syncing time with NTP server...");
-  configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
-  struct tm timeinfo;
-  if(!getLocalTime(&timeinfo)){
-    Serial.println(" Failed to obtain time. Retrying...");
-    delay(1000);
-    // Do not recursively call syncTime() here to avoid stack overflow.
-    // The main loop will handle retries if time is not synced.
-    return;
-  }
-  Serial.println(" Time synchronized.");
+    Serial.print("Syncing time with NTP server...");
+    configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+    struct tm timeinfo;
+    if(!getLocalTime(&timeinfo)){
+        Serial.println(" Failed to obtain time.");
+    } else {
+        Serial.println(" Time synchronized.");
+    }
 }
 
 String getAuthToken(const char* email, const char* password) {
@@ -353,113 +322,65 @@ String getAuthToken(const char* email, const char* password) {
     JsonDocument resp;
     deserializeJson(resp, http.getString());
     http.end();
-    Serial.println("Auth success!");
     return resp["idToken"].as<String>();
   } else {
     Serial.printf("Auth failed (%s): %d\\n", email, code);
-    Serial.println(http.getString());
     http.end();
     return "";
   }
 }
 
-void sendDataToFirestore(String& idToken, const char* userId) {
+void sendDataToRealtimeDB(String& idToken, const char* userId) {
   HTTPClient http;
-  String url = "https://firestore.googleapis.com/v1/projects/" + String(PROJECT_ID) +
-               "/databases/(default)/documents/users/" + String(userId) + "/esp32_data";
+  String url = "https://" + String(PROJECT_ID) + ".firebaseio.com/esp32_data/" + String(userId) + ".json?auth=" + idToken;
 
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("Authorization", "Bearer " + idToken);
 
   JsonDocument doc;
-  JsonObject f = doc["fields"].to<JsonObject>();
+  
+  // Use a dedicated server-side timestamp for RTDB
+  doc[".sv"] = "timestamp";
 
-  // Add timestamp
+  char timestamp[30];
   struct tm timeinfo;
-  if(getLocalTime(&timeinfo)){
-    char timestamp[30];
+  if(getLocalTime(&timeinfo, 5000)){ // 5s timeout
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
-    f["timestamp"]["stringValue"] = timestamp;
+    doc["timestamp"] = timestamp;
   } else {
-    Serial.println("Failed to get local time for timestamp!");
+    doc["timestamp"] = "1970-01-01T00:00:00Z"; // Fallback timestamp
   }
-
-  f["panelV"]["doubleValue"] = panelV;
-  f["panelI"]["doubleValue"] = panelI;
-  f["batteryV"]["doubleValue"] = batteryV;
-  f["batteryI"]["doubleValue"] = batteryI;
-  f["batteryTemp"]["doubleValue"] = batteryTemp;
-  f["batteryPercent"]["doubleValue"] = batteryPercent;
-  f["inverterV"]["doubleValue"] = inverterV;
-  f["inverterI"]["doubleValue"] = inverterI;
-  f["inverterTemp"]["doubleValue"] = inverterTemp;
-  f["totalPower"]["doubleValue"] = totalPower;
-  f["irradiance"]["doubleValue"] = irradiance;
-
-  f["comA_V"]["doubleValue"] = comA_V;
-  f["comA_I"]["doubleValue"] = comA_I;
-  f["comB_V"]["doubleValue"] = comB_V;
-  f["comB_I"]["doubleValue"] = comB_I;
-  f["comC_V"]["doubleValue"] = comC_V;
-  f["comC_I"]["doubleValue"] = comC_I;
+  
+  doc["panelV"] = panelV;
+  doc["panelI"] = panelI;
+  doc["batteryV"] = batteryV;
+  doc["batteryI"] = batteryI;
+  doc["batteryTemp"] = batteryTemp;
+  doc["batteryPercent"] = batteryPercent;
+  doc["inverterV"] = inverterV;
+  doc["inverterI"] = inverterI;
+  doc["inverterTemp"] = inverterTemp;
+  doc["totalPower"] = totalPower;
+  doc["irradiance"] = irradiance;
+  doc["comA_V"] = comA_V;
+  doc["comA_I"] = comA_I;
+  doc["comB_V"] = comB_V;
+  doc["comB_I"] = comB_I;
+  doc["comC_V"] = comC_V;
+  doc["comC_I"] = comC_I;
 
   String json;
   serializeJson(doc, json);
 
   http.setTimeout(10000);
-  int code = http.POST(json);
+  int code = http.PUT(json);
 
-  if (code >= 200 && code < 300) {
-    Serial.printf("Data sent to Firestore (%s): %d\\n", userId, code);
+  if (code == 200) {
+    Serial.printf("Data sent to RTDB (%s): %d\\n", userId, code);
   } else {
-    Serial.printf("Firestore upload failed: %d\\n", code);
+    Serial.printf("RTDB upload failed (%s): %d\\n", userId, code);
     Serial.println(http.getString());
   }
   http.end();
 }
-`;
-
-  return (
-    <div className="flex flex-col gap-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Cpu /> ESP32 Connection Guide</CardTitle>
-          <CardDescription>
-            Follow these steps to connect your ESP32 device and start sending data to the VoltaView dashboard.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <h3 className="text-lg font-semibold">1. Hardware Requirements</h3>
-            <ul className="list-disc list-inside text-muted-foreground mt-2">
-              <li>ESP32 Development Board</li>
-              <li>Required sensors for voltage, current, and temperature (or use simulation mode)</li>
-              <li>Breadboard and jumper wires</li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold">2. Software Setup</h3>
-            <ul className="list-disc list-inside text-muted-foreground mt-2">
-              <li>Install the Arduino IDE</li>
-              <li>Install the ESP32 board definitions</li>
-              <li>Install necessary libraries: <code className='bg-muted p-1 rounded-sm'>ArduinoJson</code>, <code className='bg-muted p-1 rounded-sm'>EmonLib</code>, <code className='bg-muted p-1 rounded-sm'>OneWire</code>, <code className='bg-muted p-1 rounded-sm'>DallasTemperature</code></li>
-            </ul>
-          </div>
-           <Alert>
-              <ShieldCheck className="h-4 w-4" />
-              <AlertTitle>Your Project Credentials</AlertTitle>
-              <AlertDescription>
-                The code below is pre-configured with your unique Firebase project ID and API key. Remember to update your WiFi credentials.
-              </AlertDescription>
-            </Alert>
-          <div>
-            <h3 className="text-lg font-semibold">3. Upload Firmware</h3>
-            <p className="text-muted-foreground">Copy and paste the code below into a new Arduino sketch. Set <code className="bg-muted p-1 rounded-sm">USE_SIMULATED_DATA</code> to <code className='bg-muted p-1 rounded-sm'>false</code> if you have real sensors connected. The firmware is set to simulation mode by default so you can see your dashboard working immediately.</p>
-          </div>
-          <CodeBlock code={arduinoCode} language="cpp" />
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+`

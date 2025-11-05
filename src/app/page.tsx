@@ -25,12 +25,11 @@ import { SolarGenerationChart } from '@/components/dashboard/solar-generation-ch
 import { CommunityDistributionChart } from '@/components/dashboard/community-distribution-chart';
 import { Badge } from '@/components/ui/badge';
 import { BatteryStateChart } from '@/components/dashboard/battery-state-chart';
-import { useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser } from '@/firebase';
 import { deriveMetrics, DeriveMetricsInput, DeriveMetricsOutput } from '@/ai/flows/derive-metrics-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useRtdbValue } from '@/firebase/realtimedb/use-rtdb-value';
 
 const communityUsers = {
   'Community A': '0nkCeSiTQbcTEhEMcUhQwYT39U72',
@@ -47,11 +46,10 @@ const initialMetrics: Omit<DeriveMetricsOutput, 'power'> = {
 };
 
 const isApiKeySet = process.env.NEXT_PUBLIC_IS_GEMINI_API_KEY_SET === 'true';
-const LIVE_THRESHOLD_SECONDS = 5; // Data is stale if older than 5 seconds
+const LIVE_THRESHOLD_SECONDS = 10; // Data is stale if older than 10 seconds
 
 export default function Page() {
   const { user } = useUser();
-  const firestore = useFirestore();
   const [metrics, setMetrics] = useState<Omit<DeriveMetricsOutput, 'power'>>(initialMetrics);
   const [currentSensorData, setCurrentSensorData] = useState<any>(null);
   const [isLive, setIsLive] = useState(false);
@@ -59,32 +57,24 @@ export default function Page() {
   const [selectedCommunity, setSelectedCommunity] = useState<Community>('Community A');
 
   const selectedUserId = communityUsers[selectedCommunity];
-
-  const espDataQuery = useMemoFirebase(() => {
-    if (!selectedUserId || !firestore) return null;
-    return query(
-      collection(firestore, 'users', selectedUserId, 'esp32_data'),
-      orderBy('timestamp', 'desc'),
-      limit(1)
-    );
-  }, [selectedUserId, firestore]);
-
-  const { data: espData, isLoading: isEspDataLoading } = useCollection<any>(espDataQuery);
+  const { data: rtdbData, isLoading: isRtdbLoading } = useRtdbValue<any>(`esp32_data/${selectedUserId}`);
 
   useEffect(() => {
     const processData = async () => {
-      if (!espData || espData.length === 0) {
+      if (!rtdbData) {
         setIsLive(false);
         setCurrentSensorData(null);
         setMetrics(initialMetrics);
         return;
       }
       
-      const latestData = espData[0];
-      const dataTimestamp = latestData.timestamp ? latestData.timestamp.toDate() : new Date(0);
-      const isDataFresh = (Date.now() - dataTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
+      const latestData = rtdbData;
+      // The ESP32 now sends a string timestamp. We can parse it.
+      const dataTimestamp = latestData.timestamp ? new Date(latestData.timestamp) : new Date(0);
+      const serverTimestamp = latestData['.sv'] ? new Date(latestData['.sv']) : dataTimestamp;
+      const isDataFresh = (Date.now() - serverTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
       
-      console.log(`[${selectedCommunity}] New data received. Timestamp: ${dataTimestamp.toISOString()}, Fresh: ${isDataFresh}`);
+      console.log(`[${selectedCommunity}] New RTDB data. Timestamp: ${serverTimestamp.toISOString()}, Fresh: ${isDataFresh}`);
 
       setIsLive(isDataFresh);
       setCurrentSensorData(latestData);
@@ -102,25 +92,24 @@ export default function Page() {
             irradiance: latestData.irradiance || 0,
           };
           const result = await deriveMetrics(input);
-          const { power, ...restOfMetrics } = result; // Exclude power as it's already in sensor data
+          const { power, ...restOfMetrics } = result;
           setMetrics(restOfMetrics);
         } catch (e: any) {
           console.error("Error deriving metrics:", e);
-          setMetrics(initialMetrics); // Reset on error
+          setMetrics(initialMetrics);
         } finally {
           setIsDerivingMetrics(false);
         }
       } else if (!isDataFresh) {
-        // If data is stale, reset metrics
         setMetrics(initialMetrics);
       }
     };
     
     processData();
 
-  }, [espData, selectedCommunity]);
+  }, [rtdbData, selectedCommunity]);
 
-  const isLoading = isEspDataLoading || (isLive && isDerivingMetrics);
+  const isLoading = isRtdbLoading || (isLive && isDerivingMetrics);
   const power = currentSensorData?.totalPower ?? 0;
   const solarIrradiance = currentSensorData?.irradiance ?? 0;
   const voltage = currentSensorData?.inverterV ?? 0;
@@ -130,13 +119,12 @@ export default function Page() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header Banner */}
       <Card className="bg-primary text-primary-foreground">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <div className="flex items-center gap-4">
               <CardTitle className="text-2xl">Smart Solar Microgrid Management</CardTitle>
-              {isLive && !isEspDataLoading && (
+              {isLive && !isRtdbLoading && (
                 <Badge variant="outline" className="border-green-400 bg-green-400/10 text-green-300">
                   <span className="relative flex h-2 w-2 mr-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -176,7 +164,7 @@ export default function Page() {
         </CardHeader>
       </Card>
       
-      {isEspDataLoading && !currentSensorData && (
+      {isRtdbLoading && !currentSensorData && (
          <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground">Connecting to your ESP32 device for {selectedCommunity}...</p>
@@ -184,7 +172,7 @@ export default function Page() {
         </Card>
       )}
 
-      {!isEspDataLoading && !currentSensorData && !isLive && (
+      {!isRtdbLoading && !currentSensorData && !isLive && (
         <Card>
           <CardHeader>
             <CardTitle>Waiting for Data for {selectedCommunity}</CardTitle>
@@ -198,7 +186,6 @@ export default function Page() {
         </Card>
       )}
 
-      {/* Metrics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -314,14 +301,12 @@ export default function Page() {
         </Card>
       </div>
 
-      {/* Solar Generation Chart */}
       <Card>
         <CardContent className="h-[300px] p-0 pt-6">
           <SolarGenerationChart />
         </CardContent>
       </Card>
 
-      {/* Community Distribution & Battery State */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
@@ -342,7 +327,4 @@ export default function Page() {
       </div>
     </div>
   );
-
-    
-
-    
+}
