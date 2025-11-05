@@ -59,9 +59,9 @@ export default function CommunityAPage() {
   const communityNode = latestData ? {
       id: 'NODE-A01',
       status: 'online',
-      voltage: latestData.voltage,
-      current: latestData.current,
-      power: latestData.voltage * latestData.current
+      voltage: latestData.comA_V,
+      current: latestData.comA_I,
+      power: latestData.comA_V * latestData.comA_I
   } : null;
 
   const totalConsumption = communityNode ? communityNode.power / 1000 : 0;
@@ -71,8 +71,8 @@ export default function CommunityAPage() {
     .map(d => ({
         // Format timestamp to a readable time string
         day: d.timestamp ? new Date(d.timestamp.toDate()).toLocaleTimeString() : 'N/A',
-        consumption: (d.voltage * d.current) / 1000, // in kW
-        generation: (d.ldr / 1023) * 1.5, // Estimated generation in kW
+        consumption: (d.comA_V * d.comA_I) / 1000, // in kW
+        generation: (d.irradiance / 1000) * 1.5, // Estimated generation in kW
     }))
     .reverse(); // Reverse to show chronological order
 
@@ -206,7 +206,9 @@ export default function CommunityAPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[400px]">
-          <CommunityConsumptionGenerationChart data={chartData} />
+          {isEspDataLoading && historicalData.length === 0 ? <Skeleton className="h-full w-full"/> : 
+            <CommunityConsumptionGenerationChart data={chartData} />
+          }
         </CardContent>
       </Card>
     </div>
