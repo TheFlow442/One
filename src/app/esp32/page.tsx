@@ -29,8 +29,8 @@ export default function ESP32Page() {
 #include <ArduinoJson.h>
 
 // -------- 1. WIFI & FIREBASE PROJECT CREDENTIALS --------
-const char* WIFI_SSID = "op";
-const char* WIFI_PASSWORD = "987654321";
+const char* WIFI_SSID = "YOUR_WIFI_SSID";
+const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
 const char* WEB_API_KEY = "${apiKey}";
 const char* PROJECT_ID = "${projectId}";
@@ -99,13 +99,13 @@ void loop() {
       Serial.println("Skipping data send due to auth failure.");
     }
     
-    // Brief delay before processing the next community
-    delay(2000); 
+    // Short delay before processing the next community for stability
+    delay(500); 
   }
   
-  // Wait for a longer period before starting the next full cycle
+  // Wait for a short period before starting the next full cycle
   Serial.println("\\n=== Completed Full Cycle. Waiting... ===");
-  delay(10000); 
+  delay(2000); 
 }
 
 void connectToWiFi() {
@@ -227,7 +227,7 @@ void sendDataToFirestore(String& idToken, const char* userId) {
         <ShieldCheck className="h-4 w-4" />
         <AlertTitle>Important: Single Device Configuration</AlertTitle>
         <AlertDescription>
-          This sketch is designed to run on a single ESP32. It will cycle through each community's credentials, authenticating and sending data sequentially. Ensure your device has the sensor logic to provide data for all three communities.
+          This sketch is designed to run on a single ESP32. It will cycle through each community's credentials, authenticating and sending data sequentially. Remember to replace `YOUR_WIFI_SSID` and `YOUR_WIFI_PASSWORD` with your actual network credentials.
         </AlertDescription>
       </Alert>
 
