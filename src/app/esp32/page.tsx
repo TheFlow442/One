@@ -13,9 +13,22 @@ export default function ESP32Page() {
   const apiKey = firebaseConfig.apiKey;
 
   const generateArduinoCode = (community: 'A' | 'B' | 'C') => {
-    const userEmail = `community-${community.toLowerCase()}-user@example.com`;
-    const userPassword = `password-for-community-${community.toLowerCase()}`;
-    const userId = `firebase-uid-for-community-${community.toLowerCase()}-user`;
+    let userEmail, userPassword;
+    switch (community) {
+      case 'A':
+        userEmail = 'user1@volta.view';
+        userPassword = 'password123';
+        break;
+      case 'B':
+        userEmail = 'user2@volta.view';
+        userPassword = 'password123';
+        break;
+      case 'C':
+        userEmail = 'user3@volta.view';
+        userPassword = 'password123';
+        break;
+    }
+    const userId = `REPLACE_WITH_UID_FOR_${userEmail}`;
 
     return `
 /*
@@ -41,7 +54,7 @@ const char* WIFI_PASSWORD = "987654321";
 // This should be the user dedicated to Community ${community}
 const char* FIREBASE_USER_EMAIL = "${userEmail}";
 const char* FIREBASE_USER_PASSWORD = "${userPassword}";
-const char* USER_ID = "${userId}";
+const char* USER_ID = "${userId}"; // <-- IMPORTANT: REPLACE THIS
 
 // These are specific to your Firebase project
 const char* WEB_API_KEY = "${apiKey}";
@@ -224,7 +237,7 @@ String getTimestamp() {
         <ShieldCheck className="h-4 w-4" />
         <AlertTitle>Important: Create Users in Firebase</AlertTitle>
         <AlertDescription>
-          This guide provides separate code for each community. You must first create three corresponding users in your Firebase project's Authentication section. Then, replace the placeholder email, password, and UID in each code snippet with the actual credentials for that user.
+          This guide provides separate code for each community. You must first create three corresponding users in your Firebase project's Authentication section. Then, replace the placeholder UID in each code snippet with the actual UID for that user.
         </AlertDescription>
       </Alert>
 
@@ -254,7 +267,7 @@ String getTimestamp() {
             <CardHeader>
               <CardTitle>ESP32 Code for Community B</CardTitle>
               <CardDescription>
-                 This Arduino sketch is pre-configured for Community B. Replace the placeholder credentials with the user you created for this community.
+                 This Arduino sketch is pre-configured for Community B. Replace the placeholder UID with the one for user2@volta.view.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -268,7 +281,7 @@ String getTimestamp() {
             <CardHeader>
               <CardTitle>ESP32 Code for Community C</CardTitle>
               <CardDescription>
-                This Arduino sketch is pre-configured for Community C. Replace the placeholder credentials with the user you created for this community.
+                This Arduino sketch is pre-configured for Community C. Replace the placeholder UID with the one for user3@volta.view.
               </CardDescription>
             </CardHeader>
             <CardContent>
