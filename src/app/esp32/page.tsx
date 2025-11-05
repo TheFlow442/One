@@ -15,9 +15,10 @@ export default function ESP32Page() {
 /*
  * VoltaView ESP32 Firebase Connector - Multi-Community Device
  * 
- * This code connects a single ESP32 to a WiFi network, then sequentially 
- * authenticates as three different Firebase users (one for each community)
- * and sends the corresponding sensor data to a Firestore database via the REST API.
+ * This code connects a single ESP32 to a WiFi network, synchronizes its time
+ * with an NTP server, then sequentially authenticates as three different 
+ * Firebase users and sends corresponding sensor data to a Firestore database 
+ * via the REST API.
  * 
  * Required Arduino Libraries:
  * - ArduinoJson (by Benoit Blanchon)
@@ -27,6 +28,7 @@ export default function ESP32Page() {
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include "time.h"
 
 // -------- 1. WIFI & FIREBASE PROJECT CREDENTIALS --------
 const char* WIFI_SSID = "YOUR_WIFI_SSID";
@@ -49,7 +51,12 @@ Community communities[] = {
 };
 const int NUM_COMMUNITIES = sizeof(communities) / sizeof(communities[0]);
 
-// -------- 3. SENSOR & DATA VARS (SIMULATED) --------
+// -------- 3. NTP & TIME --------
+const char* NTP_SERVER = "pool.ntp.org";
+const long  GMT_OFFSET_SEC = 0;
+const int   DAYLIGHT_OFFSET_SEC = 0;
+
+// -------- 4. SENSOR & DATA VARS (SIMULATED) --------
 float voltage = 230.0;
 float current = 1.5;
 float temperature = 25.0;
@@ -57,9 +64,9 @@ int ldr = 750;
 
 // -------- FUNCTION DECLARATIONS --------
 void connectToWiFi();
+void syncTime();
 String getAuthToken(const char* email, const char* password);
 void sendDataToFirestore(String& idToken, const char* userId);
-String getTimestamp();
 
 void setup() {
   Serial.begin(115200);
@@ -67,12 +74,16 @@ void setup() {
   Serial.println("\\n=== VoltaView ESP32 Multi-Community Sender ===");
   
   connectToWiFi();
+  syncTime();
 }
 
 void loop() {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi disconnected. Trying to reconnect...");
     connectToWiFi();
+    if(WiFi.status() == WL_CONNECTED) {
+      syncTime(); // Re-sync time after reconnecting
+    }
     return;
   }
 
@@ -116,6 +127,17 @@ void connectToWiFi() {
   } else {
     Serial.println("\\nFailed to connect to WiFi.");
   }
+}
+
+void syncTime() {
+  Serial.print("Syncing time with NTP server...");
+  configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println(" Failed to obtain time");
+    return;
+  }
+  Serial.println(" Time synchronized.");
 }
 
 String getAuthToken(const char* email, const char* password) {
@@ -176,10 +198,19 @@ void sendDataToFirestore(String& idToken, const char* userId) {
   fields["temperature"]["doubleValue"] = temperature;
   fields["ldr"]["integerValue"] = ldr;
   
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
+  // Create a struct to hold the time
+  struct tm timeinfo;
+
+  // Check if the time is available
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time for timestamp");
+    // Optionally handle error, e.g., don't send data or send with a null timestamp
+    return;
+  }
+  
+  // Format the timestamp in ISO 8601 format
   char timestamp[30];
-  strftime(timestamp, 30, "%Y-%m-%dT%H:%M:%SZ", gmtime(&tv.tv_sec));
+  strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
   fields["timestamp"]["timestampValue"] = timestamp;
 
   String requestBody;
@@ -227,7 +258,7 @@ void sendDataToFirestore(String& idToken, const char* userId) {
         <CardHeader>
           <CardTitle>Unified ESP32 Code for All Communities</CardTitle>
           <CardDescription>
-            This Arduino sketch is pre-configured with all user credentials. You will need to install the `ArduinoJson` library from the Library Manager in your Arduino IDE.
+            This Arduino sketch is pre-configured with all user credentials and now includes NTP time synchronization for accurate timestamps. You will need to install the `ArduinoJson` library from the Library Manager in your Arduino IDE.
           </CardDescription>
         </CardHeader>
         <CardContent>
