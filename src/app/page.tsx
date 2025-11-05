@@ -88,6 +88,8 @@ export default function Page() {
       }
       
       const latestData = espData[0];
+      console.log('Firestore is seeing changes. Received data:', latestData);
+      
       const now = new Date();
       const dataTimestamp = latestData.timestamp?.toDate();
       const isDataFresh = dataTimestamp && (now.getTime() - dataTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
