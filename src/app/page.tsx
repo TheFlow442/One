@@ -48,6 +48,7 @@ const initialMetrics: Omit<DeriveMetricsOutput, 'power'> = {
 
 // This is a server-side check that gets passed to the client
 const isApiKeySet = process.env.NEXT_PUBLIC_IS_GEMINI_API_KEY_SET === 'true';
+const LIVE_THRESHOLD_SECONDS = 30; // Consider offline if no data for 30s
 
 export default function Page() {
   const { user } = useUser();
@@ -95,24 +96,51 @@ export default function Page() {
     };
     
     if (espData && espData.length > 0) {
-      setIsLive(true);
       const latestData = espData[0];
-      const sensorInput: Omit<DeriveMetricsInput, 'communityId'> = {
-        voltage: latestData.voltage || 0,
-        current: latestData.current || 0,
-        temperature: latestData.temperature || 0,
-        ldr: latestData.ldr || 0,
-      };
-      setCurrentSensorData(sensorInput);
-      getMetrics(sensorInput);
+      const now = new Date();
+      const dataTimestamp = latestData.timestamp?.toDate();
+      
+      if (dataTimestamp && (now.getTime() - dataTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS) {
+        setIsLive(true);
+        const sensorInput: Omit<DeriveMetricsInput, 'communityId'> = {
+          voltage: latestData.voltage || 0,
+          current: latestData.current || 0,
+          temperature: latestData.temperature || 0,
+          ldr: latestData.ldr || 0,
+        };
+        // Only update sensor data and call metrics if it's new data
+        if (JSON.stringify(sensorInput) !== JSON.stringify(currentSensorData)) {
+            setCurrentSensorData(sensorInput);
+            getMetrics(sensorInput);
+        }
+      } else {
+         setIsLive(false); // Data is too old, consider it offline
+      }
     } else if (!isEspDataLoading) {
       setLoading(false);
       setIsLive(false);
       setCurrentSensorData(null);
       setMetrics(initialMetrics);
     }
+    
+    // Set up an interval to check the liveness status periodically
+    const intervalId = setInterval(() => {
+      if (espData && espData.length > 0) {
+        const latestData = espData[0];
+        const now = new Date();
+        const dataTimestamp = latestData.timestamp?.toDate();
+        if (dataTimestamp && (now.getTime() - dataTimestamp.getTime()) / 1000 > LIVE_THRESHOLD_SECONDS) {
+          setIsLive(false);
+        }
+      } else {
+        setIsLive(false);
+      }
+    }, LIVE_THRESHOLD_SECONDS * 1000);
 
-  }, [espData, isEspDataLoading, selectedCommunity]);
+    return () => clearInterval(intervalId);
+
+
+  }, [espData, isEspDataLoading, selectedCommunity, currentSensorData]);
 
   const power = currentSensorData ? currentSensorData.voltage * currentSensorData.current : 0;
   const solarIrradiance = currentSensorData ? (currentSensorData.ldr / 1023) * 1000 : 0;
@@ -316,6 +344,5 @@ export default function Page() {
       </div>
     </div>
   );
-}
 
     
