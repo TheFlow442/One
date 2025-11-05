@@ -149,7 +149,7 @@ export default function Page() {
 
     return () => clearInterval(intervalId);
 
-  }, [espData, isEspDataLoading, selectedCommunity, isLive]);
+  }, [espData, isEspDataLoading, selectedCommunity]);
 
   const power = currentSensorData ? currentSensorData.voltage * currentSensorData.current : 0;
   const solarIrradiance = currentSensorData ? (currentSensorData.ldr / 1023) * 1000 : 0;
@@ -375,9 +375,5 @@ export default function Page() {
       </div>
     </div>
   );
-
-    
-
-
 
     
