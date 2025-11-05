@@ -192,7 +192,7 @@ export default function Page() {
               No data has been received from the device recently. Please ensure your ESP32 device is on, connected, and sending data. The firmware guide includes a simulation mode if you don't have hardware.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <p>Follow the <a href="/esp32" className="underline text-primary">ESP32 Connection Guide</a> to get started.</p>
           </CardContent>
         </Card>
@@ -205,7 +205,7 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Power</CardTitle>
             <Power className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
                 <div className="text-2xl font-bold">{power.toFixed(2)} W</div>
@@ -219,7 +219,7 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Solar Irradiance</CardTitle>
             <Sun className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
                 <div className="text-2xl font-bold">{solarIrradiance.toFixed(0)} W/m²</div>
@@ -233,7 +233,7 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Battery Health</CardTitle>
             <Battery className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
                 <div className="text-2xl font-bold">{metrics.batteryHealth.toFixed(0)}%</div>
@@ -247,7 +247,7 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Voltage</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
                 <div className="text-2xl font-bold">{voltage.toFixed(2)} V</div>
@@ -261,7 +261,7 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Current</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
                 <div className="text-2xl font-bold">{current.toFixed(2)} A</div>
@@ -275,7 +275,7 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Temperature</CardTitle>
             <Thermometer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
                 <div className="text-2xl font-bold">{temperature.toFixed(1)} °C</div>
@@ -289,7 +289,7 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Battery State</CardTitle>
             <Battery className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
                 <div className="text-2xl font-bold">{metrics.batteryState}</div>
@@ -303,7 +303,7 @@ export default function Page() {
             <CardTitle className="text-sm font-medium text-destructive">Maintenance Alerts</CardTitle>
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
              {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
                 <div className="text-2xl font-bold">{metrics.maintenanceAlerts.length}</div>
@@ -327,7 +327,7 @@ export default function Page() {
           <CardHeader>
             <CardTitle>Community Distribution Today</CardTitle>
           </CardHeader>
-          <CardContent className="h-[250px]">
+          <CardContent className="h-[250px] pt-0">
             <CommunityDistributionChart />
           </CardContent>
         </Card>
@@ -335,12 +335,14 @@ export default function Page() {
           <CardHeader>
             <CardTitle>Battery State</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <BatteryStateChart />
           </CardContent>
         </Card>
       </div>
     </div>
   );
+
+    
 
     
