@@ -39,8 +39,7 @@ const communityUsers = {
 };
 type Community = keyof typeof communityUsers;
 
-const initialMetrics: DeriveMetricsOutput = {
-  power: 0,
+const initialMetrics: Omit<DeriveMetricsOutput, 'power'> = {
   batteryHealth: 0,
   batteryState: 'Idle',
   timeToFull: '--',
@@ -54,7 +53,7 @@ const isApiKeySet = process.env.NEXT_PUBLIC_IS_GEMINI_API_KEY_SET === 'true';
 export default function Page() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const [metrics, setMetrics] = useState<DeriveMetricsOutput>(initialMetrics);
+  const [metrics, setMetrics] = useState<Omit<DeriveMetricsOutput, 'power'>>(initialMetrics);
   const [currentSensorData, setCurrentSensorData] = useState<DeriveMetricsInput | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
@@ -115,6 +114,7 @@ export default function Page() {
 
   }, [espData, isEspDataLoading]);
 
+  const power = currentSensorData ? currentSensorData.voltage * currentSensorData.current : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -204,7 +204,7 @@ export default function Page() {
             <Power className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{metrics.power.toFixed(0)} W</div>}
+            {loading || !currentSensorData ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{power.toFixed(0)} W</div>}
           </CardContent>
         </Card>
         <Card>
@@ -316,3 +316,5 @@ export default function Page() {
     </div>
   );
 }
+
+    
