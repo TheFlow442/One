@@ -70,7 +70,7 @@ export default function CommunityAPage() {
   const chartData = historicalData
     .map(d => ({
         // Format timestamp to a readable time string
-        day: d.timestamp ? new Date(d.timestamp.toDate()).toLocaleTimeString() : 'N/A',
+        day: d.timestamp ? d.timestamp.toDate().toLocaleTimeString() : 'N/A',
         consumption: ((d.comA_V || 0) * (d.comA_I || 0)) / 1000, // in kW
         generation: ((d.irradiance || 0) / 1000) * 1.5, // Estimated generation in kW
     }))
@@ -214,5 +214,3 @@ export default function CommunityAPage() {
     </div>
   );
 }
-
-    

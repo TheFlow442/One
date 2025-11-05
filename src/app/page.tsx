@@ -81,7 +81,7 @@ export default function Page() {
       }
       
       const latestData = espData[0];
-      const dataTimestamp = latestData.timestamp ? new Date(latestData.timestamp) : new Date(0);
+      const dataTimestamp = latestData.timestamp ? latestData.timestamp.toDate() : new Date(0);
       const isDataFresh = (Date.now() - dataTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
       
       console.log(`[${selectedCommunity}] New data received. Timestamp: ${latestData.timestamp}, Fresh: ${isDataFresh}`);

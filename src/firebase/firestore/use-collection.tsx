@@ -9,6 +9,7 @@ import {
   FirestoreError,
   QuerySnapshot,
   CollectionReference,
+  Timestamp
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -78,12 +79,7 @@ export function useCollection<T = any>(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
         const results: ResultItemType[] = snapshot.docs.map(doc => {
-            const docData = doc.data();
-            // This handles both native Firebase Timestamps and string timestamps
-            if (docData.timestamp && docData.timestamp.toDate) {
-                // It's a Firestore Timestamp, convert it to a string
-                docData.timestamp = docData.timestamp.toDate().toISOString();
-            }
+            const docData = doc.data({ serverTimestamps: 'estimate' });
             return { ...(docData as T), id: doc.id };
         });
         setData(results);
@@ -121,7 +117,3 @@ export function useCollection<T = any>(
   
   return { data, isLoading, error };
 }
-
-    
-
-    
