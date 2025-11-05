@@ -1,9 +1,9 @@
 
+'use client';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { firebaseConfig } from '@/firebase/config';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Cpu, KeyRound, Send, ShieldCheck, Wifi } from 'lucide-react';
+import { Cpu, KeyRound, Send, ShieldCheck, Wifi, User, Users } from 'lucide-react';
 import { CodeBlock } from '@/components/code-block';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,22 +11,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 export default function ESP32Page() {
   const projectId = firebaseConfig.projectId;
   const apiKey = firebaseConfig.apiKey;
-  const firestoreEndpoint = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/{userId}/esp32_data`;
-  const identityEndpoint = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
 
-  const payloadExample = `{
-  "fields": {
-    "voltage": { "doubleValue": 230.5 },
-    "current": { "doubleValue": 5.2 },
-    "temperature": { "doubleValue": 28.5 },
-    "ldr": { "integerValue": 950 },
-    "timestamp": { "timestampValue": "2024-08-15T10:00:00Z" }
-  }
-}`;
+  const generateArduinoCode = (community: 'A' | 'B' | 'C') => {
+    const userEmail = `community-${community.toLowerCase()}-user@example.com`;
+    const userPassword = `password-for-community-${community.toLowerCase()}`;
+    const userId = `firebase-uid-for-community-${community.toLowerCase()}-user`;
 
-  const arduinoCode = `
+    return `
 /*
- * VoltaView ESP32 Firebase Connector
+ * VoltaView ESP32 Firebase Connector - Community ${community}
  * 
  * This code connects an ESP32 to a WiFi network, authenticates with
  * Firebase using a user's email/password, and sends sensor data to a 
@@ -35,8 +28,6 @@ export default function ESP32Page() {
  * Required Arduino Libraries:
  * - ArduinoJson (by Benoit Blanchon)
  * - HTTPClient
- * 
- * Make sure to install these from the Arduino IDE Library Manager.
 */
 
 #include <WiFi.h>
@@ -47,23 +38,21 @@ export default function ESP32Page() {
 const char* WIFI_SSID = "op";
 const char* WIFI_PASSWORD = "987654321";
 
-// This should be a user that has been created in your Firebase project
-const char* FIREBASE_USER_EMAIL = "your-user@example.com";
-const char* FIREBASE_USER_PASSWORD = "your-user-password";
-const char* USER_ID = "the-firebase-uid-of-the-user"; // The UID of the user above
+// This should be the user dedicated to Community ${community}
+const char* FIREBASE_USER_EMAIL = "${userEmail}";
+const char* FIREBASE_USER_PASSWORD = "${userPassword}";
+const char* USER_ID = "${userId}";
 
 // These are specific to your Firebase project
 const char* WEB_API_KEY = "${apiKey}";
 const char* PROJECT_ID = "${projectId}";
 
 // -------- 2. SENSOR & DATA VARS --------
-// Placeholder for sensor readings
 float voltage = 230.0;
 float current = 1.5;
 float temperature = 25.0;
 int ldr = 750;
-
-String idToken; // Stores the Firebase auth token
+String idToken; 
 
 // -------- FUNCTION DECLARATIONS --------
 void connectToWiFi();
@@ -74,11 +63,10 @@ String getTimestamp();
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  Serial.println("\\n=== VoltaView ESP32 Firebase Connector ===");
+  Serial.println("\\n=== VoltaView ESP32 - Community ${community} ===");
   
   connectToWiFi();
   
-  // Get the initial auth token. In a real app, you'd handle token expiration.
   if (WiFi.status() == WL_CONNECTED) {
     getAuthToken();
   }
@@ -98,7 +86,6 @@ void loop() {
     Serial.println("Not connected to WiFi or no auth token.");
   }
   
-  // Wait for 30 seconds before sending next update
   delay(30000); 
 }
 
@@ -130,7 +117,6 @@ bool getAuthToken() {
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
 
-  // Create JSON payload for authentication
   JsonDocument doc;
   doc["email"] = FIREBASE_USER_EMAIL;
   doc["password"] = FIREBASE_USER_PASSWORD;
@@ -171,7 +157,6 @@ void sendDataToFirestore() {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + idToken);
 
-  // Create JSON payload for Firestore
   JsonDocument doc;
   JsonObject fields = doc["fields"].to<JsonObject>();
   
@@ -179,12 +164,17 @@ void sendDataToFirestore() {
   fields["current"]["doubleValue"] = current;
   fields["temperature"]["doubleValue"] = temperature;
   fields["ldr"]["integerValue"] = ldr;
-  fields["timestamp"]["timestampValue"] = getTimestamp();
+  
+  // This part of the code for timestamping is simplified.
+  // A robust implementation would use an NTP client to get accurate time.
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  char timestamp[30];
+  strftime(timestamp, 30, "%Y-%m-%dT%H:%M:%SZ", gmtime(&tv.tv_sec));
+  fields["timestamp"]["timestampValue"] = timestamp;
 
   String requestBody;
   serializeJson(doc, requestBody);
-
-  Serial.println("Request Body: " + requestBody);
   
   int httpCode = http.POST(requestBody);
 
@@ -199,7 +189,7 @@ void sendDataToFirestore() {
   http.end();
 }
 
-// Returns timestamp in ISO 8601 format
+// Returns timestamp in ISO 8601 format. This is a fallback.
 String getTimestamp() {
   time_t now;
   struct tm timeinfo;
@@ -212,7 +202,11 @@ String getTimestamp() {
   return String(buf);
 }
 `;
+  };
 
+  const arduinoCodeA = generateArduinoCode('A');
+  const arduinoCodeB = generateArduinoCode('B');
+  const arduinoCodeC = generateArduinoCode('C');
 
   return (
     <div className="flex flex-col gap-6">
@@ -221,110 +215,68 @@ String getTimestamp() {
         <div>
           <h1 className="text-3xl font-bold">ESP32 Connection Guide</h1>
           <p className="text-muted-foreground">
-            Follow these steps for your ESP32 to connect and send data to Firebase.
+            Configuration and code for each community's ESP32 device.
           </p>
         </div>
       </div>
       
-      <Tabs defaultValue="guide">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="guide">Step-by-Step Guide</TabsTrigger>
-          <TabsTrigger value="code">Full Arduino Code</TabsTrigger>
+      <Alert>
+        <ShieldCheck className="h-4 w-4" />
+        <AlertTitle>Important: Create Users in Firebase</AlertTitle>
+        <AlertDescription>
+          This guide provides separate code for each community. You must first create three corresponding users in your Firebase project's Authentication section. Then, replace the placeholder email, password, and UID in each code snippet with the actual credentials for that user.
+        </AlertDescription>
+      </Alert>
+
+      <Tabs defaultValue="community_a" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="community_a"><Users className="mr-2" /> Community A</TabsTrigger>
+          <TabsTrigger value="community_b"><Users className="mr-2" /> Community B</TabsTrigger>
+          <TabsTrigger value="community_c"><Users className="mr-2" /> Community C</TabsTrigger>
         </TabsList>
-        <TabsContent value="guide">
-          <div className="flex flex-col gap-6 pt-4">
-            <Alert>
-              <ShieldCheck className="h-4 w-4" />
-              <AlertTitle>Is this secure?</AlertTitle>
-              <AlertDescription>
-                Yes. The Web API Key is a public identifier, not a secret. Access to your data is protected by Firestore Security Rules, which require a user to be authenticated via an ID Token.
-              </AlertDescription>
-            </Alert>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Wifi /> Step 1: Connect to WiFi</CardTitle>
-                <CardDescription>
-                  First, your ESP32 needs to connect to the internet. The provided code includes logic to connect to your specified network.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                 <div className="space-y-2">
-                  <Label>WiFi Credentials</Label>
-                  <div className="flex gap-2">
-                    <Input value="SSID: op" readOnly />
-                    <Input value="Password: •••••••••" readOnly />
-                  </div>
-                   <p className="text-sm text-muted-foreground mt-2">These have been pre-filled in the full code example.</p>
-                </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><KeyRound /> Step 2: Authentication</CardTitle>
-                <CardDescription>
-                  Next, the ESP32 must authenticate as a user to get a temporary ID Token. This token acts as a secure key for sending data and must be included in every request to Firestore.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                 <div className="space-y-2">
-                  <Label htmlFor="api-key">Your Web API Key (Auto-filled)</Label>
-                  <Input id="api-key" value={apiKey} readOnly />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="identity-endpoint">Authentication Endpoint URL</Label>
-                   <Input id="identity-endpoint" value={identityEndpoint} readOnly />
-                   <p className="text-sm text-muted-foreground mt-2">Send a `POST` request to this URL with a registered user's email and password to get an ID Token.</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Send /> Step 3: Sending Sensor Data</CardTitle>
-                <CardDescription>
-                  Once you have the ID Token, use it to authorize `POST` requests containing your sensor data to the Firestore REST API.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                      <Label>Authorization Header</Label>
-                      <Input value="Authorization: Bearer <ID_TOKEN>" readOnly />
-                      <p className="text-sm text-muted-foreground">The code handles this automatically, replacing `{'<ID_TOKEN>'}` with the token from Step 2.</p>
-                  </div>
-                   <div className="space-y-2">
-                      <Label htmlFor="firestore-endpoint">Firestore REST API Endpoint URL</Label>
-                      <Input id="firestore-endpoint" value={firestoreEndpoint} readOnly />
-                      <p className="text-sm text-muted-foreground">Remember to replace `{'`{userId}`'}` with the actual user's ID in the code.</p>
-                  </div>
-                  <div className="space-y-2">
-                      <Label>Example JSON Payload</Label>
-                      <CodeBlock language="json" code={payloadExample} />
-                      <p className="text-sm text-muted-foreground">This is the structure of the JSON body for your `POST` request. The app uses these values to derive all the metrics on your dashboard.</p>
-                  </div>
-              </CardContent>
-            </Card>
-          </div>
+        <TabsContent value="community_a">
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>ESP32 Code for Community A</CardTitle>
+              <CardDescription>
+                This Arduino sketch is pre-configured for Community A. You will need to install the `ArduinoJson` library from the Library Manager in your Arduino IDE.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CodeBlock language="cpp" code={arduinoCodeA} />
+            </CardContent>
+          </Card>
         </TabsContent>
-        <TabsContent value="code">
-            <div className="pt-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>ESP32 Code</CardTitle>
-                        <CardDescription>
-                            This is a complete Arduino sketch. You will need to install the `ArduinoJson` library from the Library Manager. Replace the placeholder user credentials with a valid user from your Firebase project.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <CodeBlock language="cpp" code={arduinoCode} />
-                    </CardContent>
-                </Card>
-            </div>
+
+        <TabsContent value="community_b">
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>ESP32 Code for Community B</CardTitle>
+              <CardDescription>
+                 This Arduino sketch is pre-configured for Community B. Replace the placeholder credentials with the user you created for this community.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CodeBlock language="cpp" code={arduinoCodeB} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="community_c">
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>ESP32 Code for Community C</CardTitle>
+              <CardDescription>
+                This Arduino sketch is pre-configured for Community C. Replace the placeholder credentials with the user you created for this community.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CodeBlock language="cpp" code={arduinoCodeC} />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
   );
 }
-
-    
