@@ -88,10 +88,10 @@ export default function Page() {
       }
       
       const latestData = espData[0];
-      console.log('Firestore is seeing changes. Received data:', latestData);
       
       const now = new Date();
-      const dataTimestamp = latestData.timestamp?.toDate();
+      // Firestore string timestamp needs to be parsed correctly
+      const dataTimestamp = latestData.timestamp ? new Date(latestData.timestamp) : null;
       const isDataFresh = dataTimestamp && (now.getTime() - dataTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
 
       setIsLive(isDataFresh);
@@ -131,7 +131,7 @@ export default function Page() {
   const power = currentSensorData ? currentSensorData.totalPower : 0;
   const solarIrradiance = currentSensorData ? currentSensorData.irradiance : 0;
 
-  const isLoading = isEspDataLoading || loadingMetrics;
+  const isLoading = isEspDataLoading || (isLive && loadingMetrics);
 
   return (
     <div className="flex flex-col gap-6">
@@ -347,5 +347,7 @@ export default function Page() {
       </div>
     </div>
   );
+
+    
 
     

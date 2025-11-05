@@ -43,7 +43,7 @@
       "properties": {
         "timestamp": {
           "type": "string",
-          "description": "Server timestamp of when the data was received.",
+          "description": "Server timestamp of when the data was received, in ISO 8601 format.",
           "format": "date-time"
         },
         "panelV": {
@@ -134,3 +134,6 @@
     "reasoning": "The Firestore data structure is designed to ensure authorization independence, clarity, and scalability. User data is stored under `/users/{userId}`. ESP32 data is stored as a subcollection at `/users/{userId}/esp32_data/{esp32DataId}`. This structure maintains a clear ownership model where each user's sensor data is nested under their profile, allowing for intuitive and secure data access using Firestore's security rules."
   }
 }
+
+
+    

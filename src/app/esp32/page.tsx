@@ -14,7 +14,7 @@ export default function ESP32Page() {
   const arduinoCode = `
 /*
  * VoltaView ESP32 Integrated Firmware
- * - Reads real hardware sensors (solar, battery, inverter, community lines)
+ * - Reads real hardware sensors OR generates simulated data
  * - Sends live data to Firebase Firestore for multiple community users
  * - Uses WiFi + REST API (no external Firebase library)
  * - Includes NTP time synchronization for accurate timestamps
@@ -27,6 +27,11 @@ export default function ESP32Page() {
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include "time.h"
+
+// -------- SIMULATION MODE --------
+// Set to true to send simulated data instead of reading hardware sensors.
+// Useful for testing the cloud and web app without physical hardware.
+#define USE_SIMULATED_DATA true
 
 // -------- WIFI & FIREBASE CONFIG --------
 const char* WIFI_SSID = "DESKTOP";
@@ -87,6 +92,7 @@ const float AC_CAL = 20.0;
 const float ZMPT_CAL = 250.0;
 
 // -------- OBJECTS --------
+#if !USE_SIMULATED_DATA
 EnergyMonitor emonPanelCurrent, emonBatteryCurrent;
 EnergyMonitor emonInverterVoltage, emonInverterCurrent;
 EnergyMonitor emonComA_V, emonComA_I;
@@ -98,6 +104,7 @@ DallasTemperature battTempSensor(&oneWireBatt);
 
 OneWire oneWireInv(INV_TEMP_PIN);
 DallasTemperature invTempSensor(&oneWireInv);
+#endif
 
 // -------- SENSOR VARIABLES --------
 float panelV, panelI, batteryV, batteryI, batteryTemp;
@@ -118,6 +125,7 @@ void updateSensors();
 void controlRelays();
 float readVoltageDivider(int pin);
 float calcPower(float V, float I);
+void updateSimulatedData();
 
 // -------- SETUP --------
 void setup() {
@@ -126,32 +134,36 @@ void setup() {
 
   connectToWiFi();
   syncTime();
+  
+  #if USE_SIMULATED_DATA
+    randomSeed(analogRead(0));
+  #else
+    // Initialize real sensors
+    battTempSensor.begin();
+    invTempSensor.begin();
 
-  // Initialize sensors
-  battTempSensor.begin();
-  invTempSensor.begin();
+    // Relays
+    pinMode(RELAY_A, OUTPUT);
+    pinMode(RELAY_B, OUTPUT);
+    pinMode(RELAY_C, OUTPUT);
+    digitalWrite(RELAY_A, LOW);
+    digitalWrite(RELAY_B, LOW);
+    digitalWrite(RELAY_C, LOW);
 
-  // Relays
-  pinMode(RELAY_A, OUTPUT);
-  pinMode(RELAY_B, OUTPUT);
-  pinMode(RELAY_C, OUTPUT);
-  digitalWrite(RELAY_A, LOW);
-  digitalWrite(RELAY_B, LOW);
-  digitalWrite(RELAY_C, LOW);
+    // Energy monitors
+    emonPanelCurrent.current(PANEL_CURR_PIN, AC_CAL);
+    emonBatteryCurrent.current(BATTERY_CURR_PIN, AC_CAL);
 
-  // Energy monitors
-  emonPanelCurrent.current(PANEL_CURR_PIN, AC_CAL);
-  emonBatteryCurrent.current(BATTERY_CURR_PIN, AC_CAL);
+    emonInverterVoltage.voltage(INV_VOLT_PIN, ZMPT_CAL, 1.7);
+    emonInverterCurrent.current(INV_CURR_PIN, AC_CAL);
 
-  emonInverterVoltage.voltage(INV_VOLT_PIN, ZMPT_CAL, 1.7);
-  emonInverterCurrent.current(INV_CURR_PIN, AC_CAL);
-
-  emonComA_V.voltage(COMA_VOLT_PIN, ZMPT_CAL, 1.7);
-  emonComA_I.current(COMA_CURR_PIN, AC_CAL);
-  emonComB_V.voltage(COMB_VOLT_PIN, ZMPT_CAL, 1.7);
-  emonComB_I.current(COMB_CURR_PIN, AC_CAL);
-  emonComC_V.voltage(COMC_VOLT_PIN, ZMPT_CAL, 1.7);
-  emonComC_I.current(COMC_CURR_PIN, AC_CAL);
+    emonComA_V.voltage(COMA_VOLT_PIN, ZMPT_CAL, 1.7);
+    emonComA_I.current(COMA_CURR_PIN, AC_CAL);
+    emonComB_V.voltage(COMB_VOLT_PIN, ZMPT_CAL, 1.7);
+    emonComB_I.current(COMB_CURR_PIN, AC_CAL);
+    emonComC_V.voltage(COMC_VOLT_PIN, ZMPT_CAL, 1.7);
+    emonComC_I.current(COMC_CURR_PIN, AC_CAL);
+  #endif
 }
 
 // -------- LOOP --------
@@ -182,42 +194,97 @@ void loop() {
 
 // -------- SENSOR FUNCTIONS --------
 void updateSensors() {
-  panelV = readVoltageDivider(PANEL_VOLT_PIN);
-  panelI = emonPanelCurrent.calcIrms(1480);
-  irradiance = map(analogRead(IRRADIANCE_PIN), 0, 4095, 0, 1000);
+  #if USE_SIMULATED_DATA
+    updateSimulatedData();
+  #else
+    panelV = readVoltageDivider(PANEL_VOLT_PIN);
+    panelI = emonPanelCurrent.calcIrms(1480);
+    irradiance = map(analogRead(IRRADIANCE_PIN), 0, 4095, 0, 1000);
 
-  batteryV = readVoltageDivider(BATTERY_VOLT_PIN);
-  batteryI = emonBatteryCurrent.calcIrms(1480);
-  battTempSensor.requestTemperatures();
-  batteryTemp = battTempSensor.getTempCByIndex(0);
-  batteryPercent = constrain(((batteryV - 11.8) / (14.4 - 11.8)) * 100, 0, 100);
+    batteryV = readVoltageDivider(BATTERY_VOLT_PIN);
+    batteryI = emonBatteryCurrent.calcIrms(1480);
+    battTempSensor.requestTemperatures();
+    batteryTemp = battTempSensor.getTempCByIndex(0);
+    batteryPercent = constrain(((batteryV - 11.8) / (14.4 - 11.8)) * 100, 0, 100);
 
-  emonInverterVoltage.calcVI(20, 2000);
-  inverterV = emonInverterVoltage.Vrms;
-  inverterI = emonInverterCurrent.calcIrms(1480);
-  invTempSensor.requestTemperatures();
-  inverterTemp = invTempSensor.getTempCByIndex(0);
-  totalPower = calcPower(inverterV, inverterI);
+    emonInverterVoltage.calcVI(20, 2000);
+    inverterV = emonInverterVoltage.Vrms;
+    inverterI = emonInverterCurrent.calcIrms(1480);
+    invTempSensor.requestTemperatures();
+    inverterTemp = invTempSensor.getTempCByIndex(0);
+    totalPower = calcPower(inverterV, inverterI);
 
-  emonComA_V.calcVI(20, 2000); comA_V = emonComA_V.Vrms; comA_I = emonComA_I.calcIrms(1480);
-  emonComB_V.calcVI(20, 2000); comB_V = emonComB_V.Vrms; comB_I = emonComB_I.calcIrms(1480);
-  emonComC_V.calcVI(20, 2000); comC_V = emonComC_V.Vrms; comC_I = emonComC_I.calcIrms(1480);
+    emonComA_V.calcVI(20, 2000); comA_V = emonComA_V.Vrms; comA_I = emonComA_I.calcIrms(1480);
+    emonComB_V.calcVI(20, 2000); comB_V = emonComB_V.Vrms; comB_I = emonComB_I.calcIrms(1480);
+    emonComC_V.calcVI(20, 2000); comC_V = emonComC_V.Vrms; comC_I = emonComC_I.calcIrms(1480);
+  #endif
 
   Serial.printf("Panel: %.2fV %.2fA | Batt: %.2fV %.2fA %.2f°C | Inv: %.2fV %.2fA %.2f°C\\n",
                 panelV, panelI, batteryV, batteryI, batteryTemp, inverterV, inverterI, inverterTemp);
 }
 
+void updateSimulatedData() {
+    // Simulate time-of-day for realistic solar data
+    time_t now;
+    struct tm timeinfo;
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    float hour_of_day = timeinfo.tm_hour + timeinfo.tm_min / 60.0;
+    
+    // Simulate a sine wave for solar irradiance based on time of day
+    float sine_wave = sin((hour_of_day - 6) * PI / 12); // Peaks at noon (12)
+    irradiance = (sine_wave > 0) ? 300 + (sine_wave * 600) + random(-50, 50) : 0;
+    irradiance = max(0.0f, irradiance);
+
+    panelV = 16.0 + (irradiance / 1000.0) * 2.0 + random(-10, 10) / 10.0;
+    panelI = (irradiance / 1000.0) * 5.0 + random(-2, 2) / 10.0;
+    
+    // Simulate battery charging/discharging
+    if (irradiance > 200) { // Charging during the day
+        batteryI = 1.0 + (irradiance / 1000) * 1.5 + random(0, 5) / 10.0;
+        batteryV = 13.0 + (irradiance / 1000) * 1.4;
+        batteryTemp = 20.0 + (irradiance / 1000) * 10 + random(-2, 2);
+    } else { // Discharging at night
+        batteryI = -2.0 - random(0, 10) / 10.0; // Negative for discharging
+        batteryV = 12.5 - random(0, 5)/10.0;
+        batteryTemp = 18.0 + random(-2, 2);
+    }
+    batteryV = constrain(batteryV, 11.8, 14.4);
+    batteryPercent = constrain(((batteryV - 11.8) / (14.4 - 11.8)) * 100, 0, 100);
+
+    // Simulate inverter and load
+    inverterV = 225.0 + random(-5, 5);
+    inverterI = 1.5 + random(-5, 5) / 10.0;
+    inverterTemp = 35.0 + random(-5, 5);
+    totalPower = calcPower(inverterV, inverterI);
+
+    // Simulate community loads
+    comA_V = 225.0 + random(-2, 2);
+    comA_I = 0.5 + random(-2, 2) / 10.0;
+    comB_V = 225.0 + random(-2, 2);
+    comB_I = 0.4 + random(-2, 2) / 10.0;
+    comC_V = 225.0 + random(-2, 2);
+    comC_I = 0.6 + random(-2, 2) / 10.0;
+}
+
+
 void controlRelays() {
   bool active = (batteryV > 12.0 && panelV > 15.0);
-  digitalWrite(RELAY_A, active);
-  digitalWrite(RELAY_B, active);
-  digitalWrite(RELAY_C, active);
+  #if !USE_SIMULATED_DATA
+    digitalWrite(RELAY_A, active);
+    digitalWrite(RELAY_B, active);
+    digitalWrite(RELAY_C, active);
+  #endif
 }
 
 float readVoltageDivider(int pin) {
-  int raw = analogRead(pin);
-  float vout = (raw * ADC_REF) / ADC_RES;
-  return vout * ((R1 + R2) / R2);
+  #if USE_SIMULATED_DATA
+    return 0; // Not used in sim mode
+  #else
+    int raw = analogRead(pin);
+    float vout = (raw * ADC_REF) / ADC_RES;
+    return vout * ((R1 + R2) / R2);
+  #endif
 }
 
 float calcPower(float V, float I) {
@@ -300,7 +367,7 @@ void sendDataToFirestore(String& idToken, const char* userId) {
   if(getLocalTime(&timeinfo)){
     char timestamp[30];
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
-    f["timestamp"]["timestampValue"] = timestamp;
+    f["timestamp"]["stringValue"] = timestamp; // Firestore expects a string for serverValue timestamp
   } else {
     Serial.println("Failed to get local time for timestamp!");
   }
@@ -354,7 +421,7 @@ void sendDataToFirestore(String& idToken, const char* userId) {
             <h3 className="text-lg font-semibold">1. Hardware Requirements</h3>
             <ul className="list-disc list-inside text-muted-foreground mt-2">
               <li>ESP32 Development Board</li>
-              <li>Required sensors for voltage, current, and temperature</li>
+              <li>Required sensors for voltage, current, and temperature (or use simulation mode)</li>
               <li>Breadboard and jumper wires</li>
             </ul>
           </div>
@@ -375,7 +442,7 @@ void sendDataToFirestore(String& idToken, const char* userId) {
             </Alert>
           <div>
             <h3 className="text-lg font-semibold">3. Upload Firmware</h3>
-            <p className="text-muted-foreground">Copy and paste the code below into a new Arduino sketch, update your <code className="bg-muted p-1 rounded-sm">WIFI_SSID</code> and <code className="bg-muted p-1 rounded-sm">WIFI_PASSWORD</code>, and upload it to your ESP32.</p>
+            <p className="text-muted-foreground">Copy and paste the code below into a new Arduino sketch, update your <code className="bg-muted p-1 rounded-sm">WIFI_SSID</code> and <code className="bg-muted p-1 rounded-sm">WIFI_PASSWORD</code>, and upload it to your ESP32. Set <code className='bg-muted p-1 rounded-sm'>USE_SIMULATED_DATA</code> to <code className='bg-muted p-1 rounded-sm'>false</code> if you have real sensors connected.</p>
           </div>
           <CodeBlock code={arduinoCode} language="cpp" />
         </CardContent>
@@ -383,5 +450,7 @@ void sendDataToFirestore(String& idToken, const char* userId) {
     </div>
   );
 }
+
+    
 
     

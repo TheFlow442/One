@@ -77,7 +77,15 @@ export function useCollection<T = any>(
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
-        const results: ResultItemType[] = snapshot.docs.map(doc => ({ ...(doc.data() as T), id: doc.id }));
+        const results: ResultItemType[] = snapshot.docs.map(doc => {
+            const docData = doc.data();
+            // This handles both native Firebase Timestamps and string timestamps
+            if (docData.timestamp && docData.timestamp.toDate) {
+                // It's a Firestore Timestamp, convert it to a string
+                docData.timestamp = docData.timestamp.toDate().toISOString();
+            }
+            return { ...(docData as T), id: doc.id };
+        });
         setData(results);
         setError(null);
         setIsLoading(false);
@@ -113,5 +121,7 @@ export function useCollection<T = any>(
   
   return { data, isLoading, error };
 }
+
+    
 
     
