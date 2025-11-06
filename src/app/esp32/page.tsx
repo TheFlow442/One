@@ -12,16 +12,15 @@ export default function ESP32Page() {
   const apiKey = firebaseConfig.apiKey;
 
   const arduinoCode = `/*
- * VoltaView ESP32 - FINAL HYBRID FIRMWARE
+ * VoltaView ESP32 - FINAL HARDENED FIRMWARE (v4)
  *
- * This firmware integrates hardware sensor reading with robust networking to send data
- * to both Firebase Realtime Database (for live updates) and Firestore (for history).
+ * This firmware is specifically hardened to address persistent brownout and SSL errors.
+ * It prioritizes network connection and reduces WiFi power to minimize current spikes on startup.
  *
- * It uses the exact sensor reading logic provided, combined with WiFi, authentication,
- * and data upload functionalities. It includes fixes for common Brownout and SSL errors.
- *
- * - Realtime Database Path: /esp32_live/{uid}
- * - Firestore Path: /users/{uid}/esp32_data/{doc_id}
+ * - HYBRID MODE: Sends real sensor data and falls back to simulation if sensors are disconnected.
+ * - DUAL DATABASE: Uploads to both Realtime Database (for live view) and Firestore (for history).
+ * - POWER-AWARE: Reduces WiFi TX power and initializes WiFi before other peripherals.
+ * - ROBUST: Indefinitely retries WiFi and time sync until successful.
  *
  * Libraries required:
  * - ArduinoJson v6+
@@ -43,8 +42,8 @@ export default function ESP32Page() {
 
 // ======================= CONFIGURATION =======================
 // --- WiFi Credentials (CHANGE THESE) ---
-const char* WIFI_SSID = "YOUR_WIFI_SSID";
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+const char* WIFI_SSID = "test";
+const char* WIFI_PASSWORD = "1234567890";
 
 // --- Firebase Project Details (automatically set) ---
 const char* WEB_API_KEY = "${apiKey}";
@@ -192,15 +191,16 @@ void updateAllSensors() {
 void setup() {
     Serial.begin(115200);
     while (!Serial) { delay(10); }
-    Serial.println("\\n=== VoltaView ESP32 - Robust Hybrid Firmware ===");
+    Serial.println("\\n=== VoltaView ESP32 - FINAL HARDENED FIRMWARE ===");
 
-    delay(200); // CRITICAL: Delay for power stability to prevent brownout on boot.
+    // CRITICAL: Delay for power stability to prevent brownout on boot.
+    delay(200); 
     
-    // -- Connect to Network & Sync Time FIRST --
+    // STEP 1: Connect to Network & Sync Time FIRST. This is the most power-hungry part.
     connectToWiFi();
     syncTime();
 
-    // -- Initialize Hardware (after network is stable) --
+    // STEP 2: Initialize Hardware (only after network is stable)
     battTempSensor.begin();
     invTempSensor.begin();
 
@@ -244,8 +244,10 @@ void loop() {
             Serial.printf("[INFO] Preparing upload for community %d (%s)...\\n", i + 1, communities[i].email);
             String idToken = getAuthTokenCached(i);
             if (idToken.length() > 0) {
+                // The web app primarily uses the Realtime DB for live data.
                 sendDataToRealtimeDB(idToken, communities[i].uid);
                 delay(150); // Small gap between requests
+                // Firestore is used for historical logging.
                 sendDataToFirestore(idToken, communities[i].uid);
                 delay(150);
             } else {
@@ -284,7 +286,14 @@ float calcPower(float V, float I) {
 
 void connectToWiFi() {
     Serial.printf("[WIFI] Connecting to %s...\\n", WIFI_SSID);
+
+    // NEW: Reduce WiFi TX Power to help prevent brownouts
+    // Options: WIFI_POWER_19_5dBm (max), WIFI_POWER_11dBm, WIFI_POWER_5dBm, etc.
+    WiFi.setTxPower(WIFI_POWER_11dBm);
+
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    
+    // Loop indefinitely until connection is established
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
@@ -296,6 +305,7 @@ void syncTime() {
     Serial.print("[TIME] Syncing with NTP server...");
     configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
     struct tm timeinfo;
+    // Loop indefinitely until time is synced
     while (!getLocalTime(&timeinfo)) {
         Serial.println(" [FAIL] Retrying...");
         delay(1000);
@@ -454,11 +464,12 @@ void sendDataToFirestore(const String &idToken, const char* userId) {
               <li>ESP32 Development Board</li>
               <li>Arduino IDE or VS Code with PlatformIO</li>
               <li>Required Arduino Libraries: `WiFi`, `HTTPClient`, `ArduinoJson` (v6+), `EmonLib`, `OneWire`, `DallasTemperature`</li>
+              <li>A stable power supply for your ESP32 (e.g., a high-quality USB cable connected to a powered hub or wall adapter). **A weak power supply is the most common cause of the 'Brownout' error.**</li>
             </ul>
           </div>
           <div>
             <h3 className="text-lg font-semibold">Step 2: Configure Firmware</h3>
-             <p className="text-muted-foreground mt-1">Copy the code below into your Arduino IDE. You must update the `WIFI_SSID` and `WIFI_PASSWORD` placeholders with your WiFi credentials.</p>
+             <p className="text-muted-foreground mt-1">Copy the final, hardened code below into your Arduino IDE. Your WiFi credentials have been pre-filled. This version is optimized to prevent power-related issues.</p>
           </div>
             <Alert>
                 <ShieldCheck className="h-4 w-4" />
@@ -476,6 +487,8 @@ void sendDataToFirestore(const String &idToken, const char* userId) {
     </div>
   );
 }
+
+    
 
     
 
