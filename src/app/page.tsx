@@ -32,11 +32,12 @@ import { CommunityDistributionChart } from '@/components/dashboard/community-dis
 import { Badge } from '@/components/ui/badge';
 import { BatteryStateChart } from '@/components/dashboard/battery-state-chart';
 import { useUser } from '@/firebase';
-import { deriveMetrics, DeriveMetricsInput, DeriveMetricsOutput } from '@/ai/flows/derive-metrics-flow';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRtdbValue } from '@/firebase/realtimedb/use-rtdb-value';
 import { CodeBlock } from '@/components/code-block';
+import { deriveMetrics, DeriveMetricsInput, DeriveMetricsOutput } from '@/ai/flows/derive-metrics-flow';
+
 
 const communityUsers = {
   'Community A': '0nkCeSiTQbcTEhEMcUhQwYT39U72',
@@ -45,10 +46,7 @@ const communityUsers = {
 };
 type Community = keyof typeof communityUsers;
 
-const initialMetrics: Omit<DeriveMetricsOutput, 'power'> = {
-  batteryHealth: 0,
-  batteryState: 'Idle',
-  timeToFull: '--',
+const initialMetrics: Partial<DeriveMetricsOutput> = {
   maintenanceAlerts: [],
 };
 
@@ -57,7 +55,7 @@ const LIVE_THRESHOLD_SECONDS = 10; // Data is stale if older than 10 seconds
 
 export default function Page() {
   const { user } = useUser();
-  const [metrics, setMetrics] = useState<Omit<DeriveMetricsOutput, 'power'>>(initialMetrics);
+  const [metrics, setMetrics] = useState<Partial<DeriveMetricsOutput>>(initialMetrics);
   const [currentSensorData, setCurrentSensorData] = useState<any>(null);
   const [isLive, setIsLive] = useState(false);
   const [isDerivingMetrics, setIsDerivingMetrics] = useState(false);
@@ -76,7 +74,6 @@ export default function Page() {
       }
       
       const latestData = rtdbData;
-      // The ESP32 now sends a server timestamp value, which is more reliable.
       const serverTimestamp = latestData.serverTimestamp ? new Date(latestData.serverTimestamp) : new Date(0);
       const isDataFresh = (Date.now() - serverTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
       
@@ -98,8 +95,7 @@ export default function Page() {
             irradiance: latestData.irradiance || 0,
           };
           const result = await deriveMetrics(input);
-          const { power, ...restOfMetrics } = result;
-          setMetrics(restOfMetrics);
+          setMetrics(result);
         } catch (e: any) {
           console.error("Error deriving metrics:", e);
           setMetrics(initialMetrics);
@@ -120,6 +116,7 @@ export default function Page() {
   // Safely access all data with fallbacks to 0 to prevent crashes from corrupt/partial data
   const power = currentSensorData?.totalPower ?? 0;
   const solarIrradiance = currentSensorData?.irradiance ?? 0;
+  const batterySoc = currentSensorData?.batteryPercent ?? 0;
   const voltage = currentSensorData?.inverterV ?? 0;
   const current = currentSensorData?.inverterI ?? 0;
   const temperature = currentSensorData?.batteryTemp ?? 0;
@@ -214,14 +211,14 @@ export default function Page() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Battery Health</CardTitle>
+            <CardTitle className="text-sm font-medium">Battery SOC</CardTitle>
             <Battery className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{(metrics.batteryHealth || 0).toFixed(0)}%</div>
-                <p className="text-xs text-muted-foreground">AI-estimated health index</p>
+                <div className="text-2xl font-bold">{(batterySoc || 0).toFixed(0)}%</div>
+                <p className="text-xs text-muted-foreground">State of Charge</p>
               </>
             }
           </CardContent>
@@ -268,20 +265,6 @@ export default function Page() {
             }
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Battery State</CardTitle>
-            <Battery className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
-              <>
-                <div className="text-2xl font-bold">{metrics.batteryState || 'Idle'}</div>
-                <p className="text-xs text-muted-foreground">{metrics.timeToFull || '--'} to full</p>
-              </>
-            }
-          </CardContent>
-        </Card>
         <Card className="bg-destructive/10 border-destructive/30">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-destructive">Maintenance Alerts</CardTitle>
@@ -290,7 +273,7 @@ export default function Page() {
           <CardContent>
              {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{metrics.maintenanceAlerts.length}</div>
+                <div className="text-2xl font-bold">{metrics.maintenanceAlerts?.length || 0}</div>
                 <p className="text-xs text-destructive/80">Active AI-detected alerts</p>
               </>
             }
@@ -358,3 +341,5 @@ export default function Page() {
     </div>
   );
 }
+
+    
