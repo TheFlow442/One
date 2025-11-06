@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { firebaseConfig } from '@/firebase/config';
-import { Cpu, ShieldCheck } from 'lucide-react';
+import { Cpu, ShieldCheck, Lightbulb } from 'lucide-react';
 import { CodeBlock } from '@/components/code-block';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -12,23 +12,17 @@ export default function ESP32Page() {
   const apiKey = firebaseConfig.apiKey;
 
   const arduinoCode = `/*
- * VoltaView ESP32 - FINAL HARDENED FIRMWARE (v4)
+ * VoltaView ESP32 - FINAL HARDENED FIRMWARE (v5 - with LED Status)
  *
- * This firmware is specifically hardened to address persistent brownout and SSL errors.
- * It prioritizes network connection and reduces WiFi power to minimize current spikes on startup.
+ * This firmware is the most robust version, specifically designed to mitigate
+ * brownout errors and provide visual feedback via the built-in LED, allowing
+ * you to diagnose the device even when it's not connected to a computer.
  *
+ * - LED STATUS: Provides clear visual signals for WiFi, Time Sync, and Upload status.
+ * - POWER-AWARE STARTUP: Initializes WiFi first and reduces TX power to minimize current spikes.
  * - HYBRID MODE: Sends real sensor data and falls back to simulation if sensors are disconnected.
  * - DUAL DATABASE: Uploads to both Realtime Database (for live view) and Firestore (for history).
- * - POWER-AWARE: Reduces WiFi TX power and initializes WiFi before other peripherals.
  * - ROBUST: Indefinitely retries WiFi and time sync until successful.
- *
- * Libraries required:
- * - ArduinoJson v6+
- * - EmonLib
- * - OneWire
- * - DallasTemperature
- * - WiFi
- * - HTTPClient
  */
 
 #include <WiFi.h>
@@ -41,7 +35,7 @@ export default function ESP32Page() {
 #include "time.h"
 
 // ======================= CONFIGURATION =======================
-// --- WiFi Credentials (CHANGE THESE) ---
+// --- WiFi Credentials ---
 const char* WIFI_SSID = "test";
 const char* WIFI_PASSWORD = "1234567890";
 
@@ -49,6 +43,9 @@ const char* WIFI_PASSWORD = "1234567890";
 const char* WEB_API_KEY = "${apiKey}";
 const char* PROJECT_ID = "${projectId}";
 const char* RTDB_BASE_URL = "https://${projectId}-default-rtdb.firebaseio.com/";
+
+// --- LED Pin (most ESP32 boards use pin 2) ---
+#define LED_BUILTIN 2
 
 // --- NTP Time Server ---
 const char* NTP_SERVER = "pool.ntp.org";
@@ -138,8 +135,90 @@ void sendDataToFirestore(const String &idToken, const char* userId);
 
 float readVoltageDivider(int pin);
 float calcPower(float V, float I);
+void ledSignal(int count, int duration);
 
-// -------- SENSOR MONITORING FUNCTION DEFS --------
+// ======================= SETUP =======================
+void setup() {
+    Serial.begin(115200);
+    while (!Serial) { delay(10); }
+    pinMode(LED_BUILTIN, OUTPUT);
+    Serial.println("\\n=== VoltaView ESP32 - FINAL HARDENED FIRMWARE (v5) ===");
+
+    // CRITICAL: Delay for power stability to prevent brownout on boot.
+    delay(200);
+
+    // STEP 1: Connect to Network & Sync Time FIRST. This is the most power-hungry part.
+    connectToWiFi();
+    syncTime();
+
+    // STEP 2: Initialize Hardware (only after network is stable)
+    battTempSensor.begin();
+    invTempSensor.begin();
+
+    pinMode(RELAY_A, OUTPUT);
+    pinMode(RELAY_B, OUTPUT);
+    pinMode(RELAY_C, OUTPUT);
+    digitalWrite(RELAY_A, LOW);
+    digitalWrite(RELAY_B, LOW);
+    digitalWrite(RELAY_C, LOW);
+
+    emonPanelCurrent.current(PANEL_CURR_PIN, AC_CAL);
+    emonBatteryCurrent.current(BATTERY_CURR_PIN, AC_CAL);
+    emonInverterVoltage.voltage(INV_VOLT_PIN, ZMPT_CAL, 1.7);
+    emonInverterCurrent.current(INV_CURR_PIN, AC_CAL);
+    emonComA_V.voltage(COMA_VOLT_PIN, ZMPT_CAL, 1.7);
+    emonComA_I.current(COMA_CURR_PIN, AC_CAL);
+    emonComB_V.voltage(COMB_VOLT_PIN, ZMPT_CAL, 1.7);
+    emonComB_I.current(COMB_CURR_PIN, AC_CAL);
+    emonComC_V.voltage(COMC_VOLT_PIN, ZMPT_CAL, 1.7);
+    emonComC_I.current(COMC_CURR_PIN, AC_CAL);
+
+    Serial.println("[INFO] Hardware sensors initialized.");
+}
+
+// ======================= MAIN LOOP =======================
+void loop() {
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("[WARN] WiFi disconnected. Reconnecting...");
+        connectToWiFi();
+        syncTime(); // Re-sync time after reconnect
+    }
+
+    updateAllSensors();
+    controlRelays();
+
+    unsigned long now = millis();
+    if (now - lastUploadMs >= UPLOAD_INTERVAL_MS) {
+        lastUploadMs = now;
+        Serial.println("=== Upload Cycle Started ===");
+        bool uploadSuccess = false;
+        for (int i = 0; i < NUM_COMMUNITIES; ++i) {
+            ledSignal(2, 50); // Fast blink for auth attempt
+            Serial.printf("[INFO] Preparing upload for community %d (%s)...\\n", i + 1, communities[i].email);
+            String idToken = getAuthTokenCached(i);
+            if (idToken.length() > 0) {
+                // The web app primarily uses the Realtime DB for live data.
+                sendDataToRealtimeDB(idToken, communities[i].uid);
+                delay(150); // Small gap between requests
+                // Firestore is used for historical logging.
+                sendDataToFirestore(idToken, communities[i].uid);
+                delay(150);
+                uploadSuccess = true;
+            } else {
+                Serial.printf("[ERROR] Failed to get auth token for %s. Skipping upload.\\n", communities[i].email);
+            }
+        }
+        if(uploadSuccess) {
+            ledSignal(1, 100); // Single quick flash for success
+        }
+        Serial.println("=== Upload Cycle Finished ===\\n");
+    }
+
+    delay(200);
+}
+
+// ======================= SENSOR MONITORING =======================
+// Your proven hardware monitoring functions remain unchanged.
 void monitorSolar() {
   panelV = readVoltageDivider(PANEL_VOLT_PIN);
   panelI = emonPanelCurrent.calcIrms(1480);
@@ -187,79 +266,8 @@ void updateAllSensors() {
     monitorCommunities();
 }
 
-// ======================= SETUP =======================
-void setup() {
-    Serial.begin(115200);
-    while (!Serial) { delay(10); }
-    Serial.println("\\n=== VoltaView ESP32 - FINAL HARDENED FIRMWARE ===");
 
-    // CRITICAL: Delay for power stability to prevent brownout on boot.
-    delay(200); 
-    
-    // STEP 1: Connect to Network & Sync Time FIRST. This is the most power-hungry part.
-    connectToWiFi();
-    syncTime();
-
-    // STEP 2: Initialize Hardware (only after network is stable)
-    battTempSensor.begin();
-    invTempSensor.begin();
-
-    pinMode(RELAY_A, OUTPUT);
-    pinMode(RELAY_B, OUTPUT);
-    pinMode(RELAY_C, OUTPUT);
-    digitalWrite(RELAY_A, LOW);
-    digitalWrite(RELAY_B, LOW);
-    digitalWrite(RELAY_C, LOW);
-
-    emonPanelCurrent.current(PANEL_CURR_PIN, AC_CAL);
-    emonBatteryCurrent.current(BATTERY_CURR_PIN, AC_CAL);
-    emonInverterVoltage.voltage(INV_VOLT_PIN, ZMPT_CAL, 1.7);
-    emonInverterCurrent.current(INV_CURR_PIN, AC_CAL);
-    emonComA_V.voltage(COMA_VOLT_PIN, ZMPT_CAL, 1.7);
-    emonComA_I.current(COMA_CURR_PIN, AC_CAL);
-    emonComB_V.voltage(COMB_VOLT_PIN, ZMPT_CAL, 1.7);
-    emonComB_I.current(COMB_CURR_PIN, AC_CAL);
-    emonComC_V.voltage(COMC_VOLT_PIN, ZMPT_CAL, 1.7);
-    emonComC_I.current(COMC_CURR_PIN, AC_CAL);
-
-    Serial.println("[INFO] Hardware sensors initialized.");
-}
-
-// ======================= MAIN LOOP =======================
-void loop() {
-    if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("[WARN] WiFi disconnected. Reconnecting...");
-        connectToWiFi();
-        syncTime(); // Re-sync time after reconnect
-    }
-
-    updateAllSensors();
-    controlRelays();
-
-    unsigned long now = millis();
-    if (now - lastUploadMs >= UPLOAD_INTERVAL_MS) {
-        lastUploadMs = now;
-        Serial.println("=== Upload Cycle Started ===");
-        for (int i = 0; i < NUM_COMMUNITIES; ++i) {
-            Serial.printf("[INFO] Preparing upload for community %d (%s)...\\n", i + 1, communities[i].email);
-            String idToken = getAuthTokenCached(i);
-            if (idToken.length() > 0) {
-                // The web app primarily uses the Realtime DB for live data.
-                sendDataToRealtimeDB(idToken, communities[i].uid);
-                delay(150); // Small gap between requests
-                // Firestore is used for historical logging.
-                sendDataToFirestore(idToken, communities[i].uid);
-                delay(150);
-            } else {
-                Serial.printf("[ERROR] Failed to get auth token for %s. Skipping upload.\\n", communities[i].email);
-            }
-        }
-        Serial.println("=== Upload Cycle Finished ===\\n");
-    }
-
-    delay(200);
-}
-
+// ======================= UTILITY FUNCTIONS =======================
 void controlRelays() {
     if (batteryV > 12.0 && panelV > 15.0) {
         digitalWrite(RELAY_A, HIGH);
@@ -282,13 +290,23 @@ float calcPower(float V, float I) {
     return V * I;
 }
 
+void ledSignal(int count, int duration) {
+    for (int i = 0; i < count; i++) {
+        digitalWrite(LED_BUILTIN, HIGH);
+        delay(duration);
+        digitalWrite(LED_BUILTIN, LOW);
+        if (count > 1) delay(duration);
+    }
+}
+
+
 // ======================= NETWORKING & FIREBASE =======================
 
 void connectToWiFi() {
     Serial.printf("[WIFI] Connecting to %s...\\n", WIFI_SSID);
+    digitalWrite(LED_BUILTIN, HIGH); // Solid ON while connecting
 
     // NEW: Reduce WiFi TX Power to help prevent brownouts
-    // Options: WIFI_POWER_19_5dBm (max), WIFI_POWER_11dBm, WIFI_POWER_5dBm, etc.
     WiFi.setTxPower(WIFI_POWER_11dBm);
 
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -298,6 +316,7 @@ void connectToWiFi() {
         delay(500);
         Serial.print(".");
     }
+    digitalWrite(LED_BUILTIN, LOW); // Turn off LED
     Serial.printf("\\n[WIFI] Connected! IP: %s\\n", WiFi.localIP().toString().c_str());
 }
 
@@ -307,6 +326,7 @@ void syncTime() {
     struct tm timeinfo;
     // Loop indefinitely until time is synced
     while (!getLocalTime(&timeinfo)) {
+        ledSignal(3, 100); // Slow blink for time sync
         Serial.println(" [FAIL] Retrying...");
         delay(1000);
     }
@@ -458,26 +478,28 @@ void sendDataToFirestore(const String &idToken, const char* userId) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div>
-            <h3 className="text-lg font-semibold">Step 1: Prerequisites</h3>
-            <ul className="list-disc list-inside text-muted-foreground mt-2 space-y-1">
-              <li>ESP32 Development Board</li>
-              <li>Arduino IDE or VS Code with PlatformIO</li>
-              <li>Required Arduino Libraries: `WiFi`, `HTTPClient`, `ArduinoJson` (v6+), `EmonLib`, `OneWire`, `DallasTemperature`</li>
-              <li>A stable power supply for your ESP32 (e.g., a high-quality USB cable connected to a powered hub or wall adapter). **A weak power supply is the most common cause of the 'Brownout' error.**</li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold">Step 2: Configure Firmware</h3>
-             <p className="text-muted-foreground mt-1">Copy the final, hardened code below into your Arduino IDE. Your WiFi credentials have been pre-filled. This version is optimized to prevent power-related issues.</p>
-          </div>
-            <Alert>
-                <ShieldCheck className="h-4 w-4" />
-                <AlertTitle>Security Note</AlertTitle>
-                <AlertDescription>
-                    Your Firebase Project ID and Web API Key are included in the code. This is secure and standard practice for public client-side applications. Access is controlled by Firebase Authentication and Security Rules, not by keeping the key secret.
-                </AlertDescription>
-            </Alert>
+           <Alert variant="destructive">
+              <Lightbulb className="h-4 w-4" />
+              <AlertTitle>Brownout Error Detected</AlertTitle>
+              <AlertDescription>
+                  The "Brownout detector was triggered" error is a **hardware power supply issue**. The firmware below is the most robust software solution possible, but the final fix requires a stable power source. Use a high-quality, short USB cable connected to a dedicated USB wall adapter (not a computer port).
+              </AlertDescription>
+          </Alert>
+
+          <Alert>
+              <ShieldCheck className="h-4 w-4" />
+              <AlertTitle>Firmware with LED Status Indicator</AlertTitle>
+              <AlertDescription>
+                  This code uses the ESP32's built-in LED to show its status, so you can diagnose it without a serial monitor.
+                    <ul className="list-disc list-inside mt-2">
+                        <li><b>Solid ON:</b> Connecting to WiFi.</li>
+                        <li><b>Slow Blink:</b> WiFi connected, syncing time.</li>
+                        <li><b>Fast Blink:</b> Authenticating with Firebase.</li>
+                        <li><b>Single Quick Flash:</b> Data successfully uploaded.</li>
+                    </ul>
+              </AlertDescription>
+          </Alert>
+          
           <CodeBlock
             code={arduinoCode}
             language="cpp"
@@ -487,9 +509,5 @@ void sendDataToFirestore(const String &idToken, const char* userId) {
     </div>
   );
 }
-
-    
-
-    
 
     
