@@ -11,9 +11,15 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   AlertTriangle,
   Battery,
-  Info,
+  HardDrive,
   Power,
   Sun,
   Thermometer,
@@ -30,6 +36,7 @@ import { deriveMetrics, DeriveMetricsInput, DeriveMetricsOutput } from '@/ai/flo
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRtdbValue } from '@/firebase/realtimedb/use-rtdb-value';
+import { CodeBlock } from '@/components/code-block';
 
 const communityUsers = {
   'Community A': '0nkCeSiTQbcTEhEMcUhQwYT39U72',
@@ -57,7 +64,7 @@ export default function Page() {
   const [selectedCommunity, setSelectedCommunity] = useState<Community>('Community A');
 
   const selectedUserId = communityUsers[selectedCommunity];
-  const { data: rtdbData, isLoading: isRtdbLoading } = useRtdbValue<any>(`esp32_data/${selectedUserId}`);
+  const { data: rtdbData, isLoading: isRtdbLoading } = useRtdbValue<any>(`esp32_live/${selectedUserId}`);
 
   useEffect(() => {
     const processData = async () => {
@@ -69,12 +76,11 @@ export default function Page() {
       }
       
       const latestData = rtdbData;
-      // The ESP32 now sends a string timestamp. We can parse it.
-      const dataTimestamp = latestData.timestamp ? new Date(latestData.timestamp) : new Date(0);
-      const serverTimestamp = latestData['.sv'] ? new Date(latestData['.sv']) : dataTimestamp;
+      // The ESP32 now sends a server timestamp value, which is more reliable.
+      const serverTimestamp = latestData.serverTimestamp ? new Date(latestData.serverTimestamp) : new Date(0);
       const isDataFresh = (Date.now() - serverTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
       
-      console.log(`[${selectedCommunity}] New RTDB data. Timestamp: ${serverTimestamp.toISOString()}, Fresh: ${isDataFresh}`);
+      console.log(`[${selectedCommunity}] New RTDB data received. Timestamp: ${serverTimestamp.toISOString()}, Fresh: ${isDataFresh}`);
 
       setIsLive(isDataFresh);
       setCurrentSensorData(latestData);
@@ -110,6 +116,8 @@ export default function Page() {
   }, [rtdbData, selectedCommunity]);
 
   const isLoading = isRtdbLoading || (isLive && isDerivingMetrics);
+  
+  // Safely access all data with fallbacks to 0 to prevent crashes from corrupt/partial data
   const power = currentSensorData?.totalPower ?? 0;
   const solarIrradiance = currentSensorData?.irradiance ?? 0;
   const voltage = currentSensorData?.inverterV ?? 0;
@@ -166,22 +174,25 @@ export default function Page() {
       
       {isRtdbLoading && !currentSensorData && (
          <Card>
-          <CardContent className="pt-6">
-            <p className="text-muted-foreground">Connecting to your ESP32 device for {selectedCommunity}...</p>
-          </CardContent>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><HardDrive />Connecting...</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="text-muted-foreground">Attempting to connect to your ESP32 device via the Realtime Database for {selectedCommunity}...</p>
+            </CardContent>
         </Card>
       )}
 
       {!isRtdbLoading && !currentSensorData && !isLive && (
-        <Card>
+        <Card className="border-amber-500/50">
           <CardHeader>
-            <CardTitle>Waiting for Data for {selectedCommunity}</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-amber-500"><AlertTriangle/> Waiting for Data</CardTitle>
             <CardDescription>
-              No data has been received from the device recently. Please ensure your ESP32 device is on, connected, and sending data. The firmware guide includes a simulation mode if you don't have hardware.
+              No live data has been received from the ESP32 for {selectedCommunity}. Please ensure your device is powered on, connected to WiFi, and has the correct firmware flashed. The device should be sending data every 5 seconds.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
-            <p>Follow the <a href="/esp32" className="underline text-primary">ESP32 Connection Guide</a> to get started.</p>
+            <p>You can check the device's status in the Arduino IDE's Serial Monitor, and refer to the <a href="/esp32" className="underline text-primary">ESP32 Connection Guide</a> to verify your setup.</p>
           </CardContent>
         </Card>
       )}
@@ -192,10 +203,10 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Power</CardTitle>
             <Power className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pt-0">
-            {isLoading ? <Skeleton className="h-8 w-24" /> :
+          <CardContent>
+            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{power.toFixed(2)} W</div>
+                <div className="text-2xl font-bold">{(power || 0).toFixed(2)} W</div>
                 <p className="text-xs text-muted-foreground">Total system output</p>
               </>
             }
@@ -206,10 +217,10 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Solar Irradiance</CardTitle>
             <Sun className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pt-0">
-            {isLoading ? <Skeleton className="h-8 w-24" /> :
+          <CardContent>
+            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{solarIrradiance.toFixed(0)} W/m²</div>
+                <div className="text-2xl font-bold">{(solarIrradiance || 0).toFixed(0)} W/m²</div>
                 <p className="text-xs text-muted-foreground">Current solar intensity</p>
               </>
             }
@@ -220,10 +231,10 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Battery Health</CardTitle>
             <Battery className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pt-0">
-            {isLoading ? <Skeleton className="h-8 w-24" /> :
+          <CardContent>
+            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{metrics.batteryHealth.toFixed(0)}%</div>
+                <div className="text-2xl font-bold">{(metrics.batteryHealth || 0).toFixed(0)}%</div>
                 <p className="text-xs text-muted-foreground">AI-estimated health index</p>
               </>
             }
@@ -234,10 +245,10 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Voltage</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pt-0">
-            {isLoading ? <Skeleton className="h-8 w-24" /> :
+          <CardContent>
+            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{voltage.toFixed(2)} V</div>
+                <div className="text-2xl font-bold">{(voltage || 0).toFixed(2)} V</div>
                 <p className="text-xs text-muted-foreground">Live AC output</p>
               </>
             }
@@ -248,10 +259,10 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Current</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pt-0">
-            {isLoading ? <Skeleton className="h-8 w-24" /> :
+          <CardContent>
+            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{current.toFixed(2)} A</div>
+                <div className="text-2xl font-bold">{(current || 0).toFixed(2)} A</div>
                 <p className="text-xs text-muted-foreground">Live AC current draw</p>
               </>
             }
@@ -262,10 +273,10 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Temperature</CardTitle>
             <Thermometer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pt-0">
-            {isLoading ? <Skeleton className="h-8 w-24" /> :
+          <CardContent>
+            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{temperature.toFixed(1)} °C</div>
+                <div className="text-2xl font-bold">{(temperature || 0).toFixed(1)} °C</div>
                 <p className="text-xs text-muted-foreground">Live battery temperature</p>
               </>
             }
@@ -276,11 +287,11 @@ export default function Page() {
             <CardTitle className="text-sm font-medium">Battery State</CardTitle>
             <Battery className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pt-0">
-            {isLoading ? <Skeleton className="h-8 w-24" /> :
+          <CardContent>
+            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{metrics.batteryState}</div>
-                <p className="text-xs text-muted-foreground">{metrics.timeToFull} to full</p>
+                <div className="text-2xl font-bold">{metrics.batteryState || 'Idle'}</div>
+                <p className="text-xs text-muted-foreground">{metrics.timeToFull || '--'} to full</p>
               </>
             }
           </CardContent>
@@ -290,8 +301,8 @@ export default function Page() {
             <CardTitle className="text-sm font-medium text-destructive">Maintenance Alerts</CardTitle>
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
-          <CardContent className="pt-0">
-             {isLoading ? <Skeleton className="h-8 w-24" /> :
+          <CardContent>
+             {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
               <>
                 <div className="text-2xl font-bold">{metrics.maintenanceAlerts.length}</div>
                 <p className="text-xs text-destructive/80">Active AI-detected alerts</p>
@@ -306,6 +317,39 @@ export default function Page() {
           <SolarGenerationChart />
         </CardContent>
       </Card>
+      
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="item-1">
+          <AccordionTrigger>
+            <div className='flex items-center gap-2'>
+              <HardDrive /> Live Data Inspector
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <Card>
+              <CardHeader>
+                <CardTitle>Raw Realtime Database JSON</CardTitle>
+                <CardDescription>
+                  This is the raw, unfiltered JSON data being received from the path <strong>/esp32_live/{selectedUserId}</strong>. It updates in real-time. Use this to debug the data your ESP32 is sending.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isRtdbLoading ? (
+                  <Skeleton className="h-40 w-full" />
+                ) : rtdbData ? (
+                  <CodeBlock
+                    code={JSON.stringify(rtdbData, null, 2)}
+                    language="json"
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">No data available at this path.</p>
+                )}
+              </CardContent>
+            </Card>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
