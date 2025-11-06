@@ -195,8 +195,12 @@ void setup() {
     Serial.println("\\n=== VoltaView ESP32 - Robust Hybrid Firmware ===");
 
     delay(200); // CRITICAL: Delay for power stability to prevent brownout on boot.
+    
+    // -- Connect to Network & Sync Time FIRST --
+    connectToWiFi();
+    syncTime();
 
-    // -- Initialize Hardware --
+    // -- Initialize Hardware (after network is stable) --
     battTempSensor.begin();
     invTempSensor.begin();
 
@@ -219,10 +223,6 @@ void setup() {
     emonComC_I.current(COMC_CURR_PIN, AC_CAL);
 
     Serial.println("[INFO] Hardware sensors initialized.");
-    
-    // -- Connect to Network & Sync Time (BLOCKING) --
-    connectToWiFi();
-    syncTime();
 }
 
 // ======================= MAIN LOOP =======================
@@ -476,5 +476,7 @@ void sendDataToFirestore(const String &idToken, const char* userId) {
     </div>
   );
 }
+
+    
 
     
