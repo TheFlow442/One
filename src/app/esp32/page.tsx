@@ -18,7 +18,7 @@ export default function ESP32Page() {
  * to both Firebase Realtime Database (for live updates) and Firestore (for history).
  *
  * It uses the exact sensor reading logic provided, combined with WiFi, authentication,
- * and data upload functionalities.
+ * and data upload functionalities. It includes fixes for common Brownout and SSL errors.
  *
  * - Realtime Database Path: /esp32_live/{uid}
  * - Firestore Path: /users/{uid}/esp32_data/{doc_id}
@@ -134,19 +134,67 @@ void controlRelays();
 
 String getAuthTokenCached(int communityIndex);
 String doAuthRequest(const char* email, const char* password, unsigned long &expiresInSec);
-void sendToRealtimeDB(const String &idToken, const char* userId);
-void sendToFirestore(const String &idToken, const char* userId);
+void sendDataToRealtimeDB(const String &idToken, const char* userId);
+void sendDataToFirestore(const String &idToken, const char* userId);
 
 float readVoltageDivider(int pin);
 float calcPower(float V, float I);
+
+// -------- SENSOR MONITORING FUNCTION DEFS --------
+void monitorSolar() {
+  panelV = readVoltageDivider(PANEL_VOLT_PIN);
+  panelI = emonPanelCurrent.calcIrms(1480);
+  int rawIrr = analogRead(IRRADIANCE_PIN);
+  irradiance = map(rawIrr, 0, 4095, 0, 1000);
+}
+
+void monitorBattery() {
+  batteryV = readVoltageDivider(BATTERY_VOLT_PIN);
+  batteryI = emonBatteryCurrent.calcIrms(1480);
+  battTempSensor.requestTemperatures();
+  batteryTemp = battTempSensor.getTempCByIndex(0);
+
+  float minV = 11.8, maxV = 14.4;
+  batteryPercent = constrain(((batteryV - minV) / (maxV - minV)) * 100, 0, 100);
+}
+
+void monitorInverter() {
+  emonInverterVoltage.calcVI(20, 2000);
+  inverterV = emonInverterVoltage.Vrms;
+  inverterI = emonInverterCurrent.calcIrms(1480);
+  invTempSensor.requestTemperatures();
+  inverterTemp = invTempSensor.getTempCByIndex(0);
+  totalPower = calcPower(inverterV, inverterI);
+}
+
+void monitorCommunities() {
+  emonComA_V.calcVI(20, 2000);
+  comA_V = emonComA_V.Vrms;
+  comA_I = emonComA_I.calcIrms(1480);
+
+  emonComB_V.calcVI(20, 2000);
+  comB_V = emonComB_V.Vrms;
+  comB_I = emonComB_I.calcIrms(1480);
+
+  emonComC_V.calcVI(20, 2000);
+  comC_V = emonComC_V.Vrms;
+  comC_I = emonComC_I.calcIrms(1480);
+}
+
+void updateAllSensors() {
+    monitorSolar();
+    monitorBattery();
+    monitorInverter();
+    monitorCommunities();
+}
 
 // ======================= SETUP =======================
 void setup() {
     Serial.begin(115200);
     while (!Serial) { delay(10); }
-    Serial.println("\\n=== VoltaView ESP32 - Final Hybrid Firmware ===");
+    Serial.println("\\n=== VoltaView ESP32 - Robust Hybrid Firmware ===");
 
-    delay(200); // Delay for power stability
+    delay(200); // CRITICAL: Delay for power stability to prevent brownout on boot.
 
     // -- Initialize Hardware --
     battTempSensor.begin();
@@ -172,7 +220,7 @@ void setup() {
 
     Serial.println("[INFO] Hardware sensors initialized.");
     
-    // -- Connect to Network --
+    // -- Connect to Network & Sync Time (BLOCKING) --
     connectToWiFi();
     syncTime();
 }
@@ -182,7 +230,7 @@ void loop() {
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("[WARN] WiFi disconnected. Reconnecting...");
         connectToWiFi();
-        syncTime();
+        syncTime(); // Re-sync time after reconnect
     }
 
     updateAllSensors();
@@ -196,9 +244,9 @@ void loop() {
             Serial.printf("[INFO] Preparing upload for community %d (%s)...\\n", i + 1, communities[i].email);
             String idToken = getAuthTokenCached(i);
             if (idToken.length() > 0) {
-                sendToRealtimeDB(idToken, communities[i].uid);
+                sendDataToRealtimeDB(idToken, communities[i].uid);
                 delay(150); // Small gap between requests
-                sendToFirestore(idToken, communities[i].uid);
+                sendDataToFirestore(idToken, communities[i].uid);
                 delay(150);
             } else {
                 Serial.printf("[ERROR] Failed to get auth token for %s. Skipping upload.\\n", communities[i].email);
@@ -208,45 +256,6 @@ void loop() {
     }
 
     delay(200);
-}
-
-
-// ======================= SENSOR READING LOGIC =======================
-// This section contains the sensor reading functions from your code.
-
-void updateAllSensors() {
-    // Solar
-    panelV = readVoltageDivider(PANEL_VOLT_PIN);
-    panelI = emonPanelCurrent.calcIrms(1480);
-    int rawIrr = analogRead(IRRADIANCE_PIN);
-    irradiance = map(rawIrr, 0, 4095, 0, 1000);
-
-    // Battery
-    batteryV = readVoltageDivider(BATTERY_VOLT_PIN);
-    batteryI = emonBatteryCurrent.calcIrms(1480);
-    battTempSensor.requestTemperatures();
-    batteryTemp = battTempSensor.getTempCByIndex(0);
-    float minV = 11.8, maxV = 14.4;
-    batteryPercent = constrain(((batteryV - minV) / (maxV - minV)) * 100, 0, 100);
-
-    // Inverter
-    emonInverterVoltage.calcVI(20, 2000);
-    inverterV = emonInverterVoltage.Vrms;
-    inverterI = emonInverterCurrent.calcIrms(1480);
-    invTempSensor.requestTemperatures();
-    inverterTemp = invTempSensor.getTempCByIndex(0);
-    totalPower = calcPower(inverterV, inverterI);
-
-    // Communities
-    emonComA_V.calcVI(20, 2000);
-    comA_V = emonComA_V.Vrms;
-    comA_I = emonComA_I.calcIrms(1480);
-    emonComB_V.calcVI(20, 2000);
-    comB_V = emonComB_V.Vrms;
-    comB_I = emonComB_I.calcIrms(1480);
-    emonComC_V.calcVI(20, 2000);
-    comC_V = emonComC_V.Vrms;
-    comC_I = emonComC_I.calcIrms(1480);
 }
 
 void controlRelays() {
@@ -287,14 +296,12 @@ void syncTime() {
     Serial.print("[TIME] Syncing with NTP server...");
     configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
     struct tm timeinfo;
-    if (!getLocalTime(&timeinfo)) {
+    while (!getLocalTime(&timeinfo)) {
         Serial.println(" [FAIL] Retrying...");
         delay(1000);
-        syncTime(); // Retry until successful
-    } else {
-        Serial.println(" [OK]");
-        Serial.printf("[TIME] Current time: %s", asctime(&timeinfo));
     }
+    Serial.println(" [OK]");
+    Serial.printf("[TIME] Current time: %s", asctime(&timeinfo));
 }
 
 String getAuthTokenCached(int communityIndex) {
@@ -370,7 +377,7 @@ DynamicJsonDocument buildSensorJsonDocument() {
     return doc;
 }
 
-void sendToRealtimeDB(const String &idToken, const char* userId) {
+void sendDataToRealtimeDB(const String &idToken, const char* userId) {
     String url = String(RTDB_BASE_URL) + "esp32_live/" + String(userId) + ".json?auth=" + idToken;
     HTTPClient http;
     http.begin(url);
@@ -391,7 +398,7 @@ void sendToRealtimeDB(const String &idToken, const char* userId) {
     http.end();
 }
 
-void sendToFirestore(const String &idToken, const char* userId) {
+void sendDataToFirestore(const String &idToken, const char* userId) {
     String url = "https://firestore.googleapis.com/v1/projects/" + String(PROJECT_ID) +
                  "/databases/(default)/documents/users/" + String(userId) + "/esp32_data";
     HTTPClient http;
@@ -469,3 +476,5 @@ void sendToFirestore(const String &idToken, const char* userId) {
     </div>
   );
 }
+
+    
