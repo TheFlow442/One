@@ -183,20 +183,6 @@ export default function Page() {
         </Card>
       )}
 
-      {!isRtdbLoading && !currentSensorData && !isLive && (
-        <Card className="border-amber-500/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-amber-500"><AlertTriangle/> Waiting for Data</CardTitle>
-            <CardDescription>
-              No live data has been received from the ESP32 for {selectedCommunity}. Please ensure your device is powered on, connected to WiFi, and has the correct firmware flashed. The device should be sending data every 5 seconds.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <p>You can check the device's status in the Arduino IDE's Serial Monitor, and refer to the <a href="/esp32" className="underline text-primary">ESP32 Connection Guide</a> to verify your setup.</p>
-          </CardContent>
-        </Card>
-      )}
-
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
