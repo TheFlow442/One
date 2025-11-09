@@ -24,23 +24,34 @@ import { Users, Zap, User, AlertTriangle, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useRtdbValue } from '@/firebase/realtimedb/use-rtdb-value';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 
 const COMMUNITY_C_USER_ID = '7yV6eXu6A1ReAXdtqOVMWszmiOD2';
 
 export default function CommunityCPage() {
+  const firestore = useFirestore();
   const [latestData, setLatestData] = useState<any>(null);
 
-  const { data: espData, isLoading: isEspDataLoading } = useRtdbValue<any>(`esp32_data/${COMMUNITY_C_USER_ID}`);
+  const latestDataQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(
+      collection(firestore, `users/${COMMUNITY_C_USER_ID}/esp32_data`),
+      orderBy('timestamp', 'desc'),
+      limit(1)
+    );
+  }, [firestore]);
+
+  const { data: firestoreData, isLoading: isFirestoreDataLoading } = useCollection<any>(latestDataQuery);
 
   useEffect(() => {
-    if (espData) {
-      setLatestData(espData);
+    if (firestoreData && firestoreData.length > 0) {
+      setLatestData(firestoreData[0]);
     } else {
       setLatestData(null);
     }
-  }, [espData]);
-  
+  }, [firestoreData]);
+
   const communityNode = latestData ? {
       id: 'NODE-C01',
       status: 'online',
@@ -51,11 +62,11 @@ export default function CommunityCPage() {
 
   const totalConsumption = communityNode ? communityNode.power / 1000 : 0;
   const onlineNodes = communityNode ? 1 : 0;
-  
+
   const chartData = latestData ? [{
-      day: latestData.timestamp ? new Date(latestData.timestamp).toLocaleTimeString() : 'N/A',
-      consumption: ((latestData.comC_V || 0) * (latestData.comC_I || 0)) / 1000, // in kW
-      generation: ((latestData.irradiance || 0) / 1000) * 1.5, // Estimated generation in kW
+      day: latestData.timestamp ? new Date(latestData.timestamp.seconds * 1000).toLocaleTimeString() : 'N/A',
+      consumption: ((latestData.comC_V || 0) * (latestData.comC_I || 0)) / 1000,
+      generation: ((latestData.irradiance || 0) / 1000) * 1.5,
   }] : [];
 
   return (
@@ -79,7 +90,7 @@ export default function CommunityCPage() {
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isEspDataLoading && !latestData ? <Skeleton className="h-8 w-24"/> : 
+            {isFirestoreDataLoading && !latestData ? <Skeleton className="h-8 w-24"/> : 
                 <>
                     <div className="text-2xl font-bold">{totalConsumption.toFixed(2)} kW</div>
                     <p className="text-xs text-muted-foreground">Live from all online nodes</p>
@@ -93,7 +104,7 @@ export default function CommunityCPage() {
             <User className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isEspDataLoading && !latestData ? <Skeleton className="h-8 w-24"/> : 
+            {isFirestoreDataLoading && !latestData ? <Skeleton className="h-8 w-24"/> : 
                 <>
                     <div className="text-2xl font-bold">{onlineNodes} / 1</div>
                     <p className="text-xs text-muted-foreground">Online right now</p>
@@ -107,7 +118,7 @@ export default function CommunityCPage() {
                 <Zap className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                 {isEspDataLoading && !latestData ? <Skeleton className="h-8 w-24"/> :
+                 {isFirestoreDataLoading && !latestData ? <Skeleton className="h-8 w-24"/> :
                     <>
                         <div className="text-2xl font-bold">{totalConsumption.toFixed(2)} kW</div>
                         <p className="text-xs text-muted-foreground">Current load</p>
@@ -127,7 +138,7 @@ export default function CommunityCPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isEspDataLoading && !latestData ? <Skeleton className="h-40 w-full"/> : communityNode ? (
+              {isFirestoreDataLoading && !latestData ? <Skeleton className="h-40 w-full"/> : communityNode ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -156,7 +167,7 @@ export default function CommunityCPage() {
                   </TableBody>
                 </Table>
               ) : (
-                <p className="text-sm text-muted-foreground">Waiting for data from the edge node...</p>
+                <div className="text-sm text-muted-foreground p-4 text-center">Waiting for data from the edge node...</div>
               )}
             </CardContent>
           </Card>
@@ -188,7 +199,7 @@ export default function CommunityCPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[400px]">
-          {isEspDataLoading && chartData.length === 0 ? <Skeleton className="h-full w-full"/> : 
+          {isFirestoreDataLoading && chartData.length === 0 ? <Skeleton className="h-full w-full"/> : 
             <CommunityConsumptionGenerationChart data={chartData} />
           }
         </CardContent>

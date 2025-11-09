@@ -30,14 +30,11 @@ import {
 import { SolarGenerationChart } from '@/components/dashboard/solar-generation-chart';
 import { CommunityDistributionChart } from '@/components/dashboard/community-distribution-chart';
 import { Badge } from '@/components/ui/badge';
-import { BatteryStateChart } from '@/components/dashboard/battery-state-chart';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useRtdbValue } from '@/firebase/realtimedb/use-rtdb-value';
 import { CodeBlock } from '@/components/code-block';
-import { deriveMetrics, DeriveMetricsInput, DeriveMetricsOutput } from '@/ai/flows/derive-metrics-flow';
-
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 
 const communityUsers = {
   'Community A': '0nkCeSiTQbcTEhEMcUhQwYT39U72',
@@ -46,72 +43,49 @@ const communityUsers = {
 };
 type Community = keyof typeof communityUsers;
 
-const initialMetrics: Partial<DeriveMetricsOutput> = {
-  maintenanceAlerts: [],
-};
-
-const isApiKeySet = process.env.NEXT_PUBLIC_IS_GEMINI_API_KEY_SET === 'true';
-const LIVE_THRESHOLD_SECONDS = 10; // Data is stale if older than 10 seconds
+const LIVE_THRESHOLD_SECONDS = 15; // Data is stale if older than 15 seconds
 
 export default function Page() {
   const { user } = useUser();
-  const [metrics, setMetrics] = useState<Partial<DeriveMetricsOutput>>(initialMetrics);
+  const firestore = useFirestore();
   const [currentSensorData, setCurrentSensorData] = useState<any>(null);
   const [isLive, setIsLive] = useState(false);
-  const [isDerivingMetrics, setIsDerivingMetrics] = useState(false);
   const [selectedCommunity, setSelectedCommunity] = useState<Community>('Community A');
 
   const selectedUserId = communityUsers[selectedCommunity];
-  const { data: rtdbData, isLoading: isRtdbLoading } = useRtdbValue<any>(`esp32_live/${selectedUserId}`);
+
+  // Query for the latest document in the esp32_data subcollection
+  const latestDataQuery = useMemoFirebase(() => {
+    if (!firestore || !selectedUserId) return null;
+    return query(
+      collection(firestore, `users/${selectedUserId}/esp32_data`),
+      orderBy('timestamp', 'desc'),
+      limit(1)
+    );
+  }, [firestore, selectedUserId]);
+
+  const { data: firestoreData, isLoading: isFirestoreLoading } = useCollection<any>(latestDataQuery);
 
   useEffect(() => {
-    const processData = async () => {
-      if (!rtdbData) {
-        setIsLive(false);
-        setCurrentSensorData(null);
-        setMetrics(initialMetrics);
-        return;
-      }
-      
-      const latestData = rtdbData;
-      const serverTimestamp = latestData.serverTimestamp ? new Date(latestData.serverTimestamp) : new Date(0);
-      const isDataFresh = (Date.now() - serverTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
-      
-      console.log(`[${selectedCommunity}] New RTDB data received. Timestamp: ${serverTimestamp.toISOString()}, Fresh: ${isDataFresh}`);
-
-      setIsLive(isDataFresh);
+    if (firestoreData && firestoreData.length > 0) {
+      const latestData = firestoreData[0];
       setCurrentSensorData(latestData);
-      
-      if (isDataFresh && isApiKeySet) {
-        setIsDerivingMetrics(true);
-        try {
-          const input: DeriveMetricsInput = {
-            communityId: selectedCommunity,
-            inverterV: latestData.inverterV || 0,
-            inverterI: latestData.inverterI || 0,
-            batteryV: latestData.batteryV || 0,
-            batteryI: latestData.batteryI || 0,
-            batteryTemp: latestData.batteryTemp || 0,
-            irradiance: latestData.irradiance || 0,
-          };
-          const result = await deriveMetrics(input);
-          setMetrics(result);
-        } catch (e: any) {
-          console.error("Error deriving metrics:", e);
-          setMetrics(initialMetrics);
-        } finally {
-          setIsDerivingMetrics(false);
-        }
-      } else if (!isDataFresh) {
-        setMetrics(initialMetrics);
+
+      // Check if data is live
+      const dataTimestamp = latestData.timestamp?.toDate();
+      if (dataTimestamp) {
+        const isDataFresh = (Date.now() - dataTimestamp.getTime()) / 1000 < LIVE_THRESHOLD_SECONDS;
+        setIsLive(isDataFresh);
+      } else {
+        setIsLive(false);
       }
-    };
-    
-    processData();
+    } else {
+      setCurrentSensorData(null);
+      setIsLive(false);
+    }
+  }, [firestoreData]);
 
-  }, [rtdbData, selectedCommunity]);
-
-  const isLoading = isRtdbLoading || (isLive && isDerivingMetrics);
+  const isLoading = isFirestoreLoading && !currentSensorData;
   
   // Safely access all data with fallbacks to 0 to prevent crashes from corrupt/partial data
   const power = currentSensorData?.totalPower ?? 0;
@@ -120,7 +94,7 @@ export default function Page() {
   const voltage = currentSensorData?.inverterV ?? 0;
   const current = currentSensorData?.inverterI ?? 0;
   const temperature = currentSensorData?.batteryTemp ?? 0;
-
+  const supplyVoltage = currentSensorData?.supplyVoltage ?? 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -129,7 +103,7 @@ export default function Page() {
           <div>
             <div className="flex items-center gap-4">
               <CardTitle className="text-2xl">Smart Solar Microgrid Management</CardTitle>
-              {isLive && !isRtdbLoading && (
+              {isLive && !isFirestoreLoading && (
                 <Badge variant="outline" className="border-green-400 bg-green-400/10 text-green-300">
                   <span className="relative flex h-2 w-2 mr-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -140,7 +114,7 @@ export default function Page() {
               )}
             </div>
             <CardDescription className="text-primary-foreground/80">
-              Monitor your solar system in real-time
+              Monitor your solar system in real-time via Firestore
             </CardDescription>
           </div>
           <Avatar>
@@ -169,27 +143,28 @@ export default function Page() {
         </CardHeader>
       </Card>
       
-      {isRtdbLoading && !currentSensorData && (
+      {isLoading && (
          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><HardDrive />Connecting...</CardTitle>
             </CardHeader>
             <CardContent>
-                <p className="text-muted-foreground">Attempting to connect to your ESP32 device via the Realtime Database for {selectedCommunity}...</p>
+                <p className="text-muted-foreground">Waiting for first data transmission from your ESP32 device to Firestore for {selectedCommunity}...</p>
+                <p className="text-xs text-muted-foreground mt-2">This can take up to 15 seconds after the device is powered on.</p>
             </CardContent>
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Power</CardTitle>
             <Power className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{(power || 0).toFixed(2)} W</div>
+                <div className="text-2xl font-bold">{power.toFixed(2)} W</div>
                 <p className="text-xs text-muted-foreground">Total system output</p>
               </>
             }
@@ -201,9 +176,9 @@ export default function Page() {
             <Sun className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{(solarIrradiance || 0).toFixed(0)} W/m²</div>
+                <div className="text-2xl font-bold">{solarIrradiance.toFixed(0)} W/m²</div>
                 <p className="text-xs text-muted-foreground">Current solar intensity</p>
               </>
             }
@@ -215,9 +190,9 @@ export default function Page() {
             <Battery className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{(batterySoc || 0).toFixed(0)}%</div>
+                <div className="text-2xl font-bold">{batterySoc.toFixed(0)}%</div>
                 <p className="text-xs text-muted-foreground">State of Charge</p>
               </>
             }
@@ -229,9 +204,9 @@ export default function Page() {
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{(voltage || 0).toFixed(2)} V</div>
+                <div className="text-2xl font-bold">{voltage.toFixed(2)} V</div>
                 <p className="text-xs text-muted-foreground">Live AC output</p>
               </>
             }
@@ -243,9 +218,9 @@ export default function Page() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{(current || 0).toFixed(2)} A</div>
+                <div className="text-2xl font-bold">{current.toFixed(2)} A</div>
                 <p className="text-xs text-muted-foreground">Live AC current draw</p>
               </>
             }
@@ -257,24 +232,24 @@ export default function Page() {
             <Thermometer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{(temperature || 0).toFixed(1)} °C</div>
+                <div className="text-2xl font-bold">{temperature.toFixed(1)} °C</div>
                 <p className="text-xs text-muted-foreground">Live battery temperature</p>
               </>
             }
           </CardContent>
         </Card>
-        <Card className="bg-destructive/10 border-destructive/30">
+         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-destructive">Maintenance Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
+            <CardTitle className="text-sm font-medium">ESP32 Supply Voltage</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             {isLoading && !isLive ? <Skeleton className="h-8 w-24" /> :
+            {isLoading ? <Skeleton className="h-8 w-24" /> :
               <>
-                <div className="text-2xl font-bold">{metrics.maintenanceAlerts?.length || 0}</div>
-                <p className="text-xs text-destructive/80">Active AI-detected alerts</p>
+                <div className="text-2xl font-bold">{supplyVoltage.toFixed(2)} V</div>
+                <p className="text-xs text-muted-foreground">Device's own power input</p>
               </>
             }
           </CardContent>
@@ -297,28 +272,33 @@ export default function Page() {
           <AccordionContent>
             <Card>
               <CardHeader>
-                <CardTitle>Raw Realtime Database JSON</CardTitle>
+                <CardTitle>Raw Firestore Document JSON</CardTitle>
                 <CardDescription>
-                  This is the raw, unfiltered JSON data being received from the path <strong>/esp32_live/{selectedUserId}</strong>. It updates in real-time. Use this to debug the data your ESP32 is sending.
+                  This is the raw, unfiltered JSON data from the latest document in the Firestore path <strong>/users/{selectedUserId}/esp32_data</strong>. It updates in real-time. Use this to debug the data your ESP32 is sending.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {isRtdbLoading ? (
+                {isLoading ? (
                   <Skeleton className="h-40 w-full" />
-                ) : rtdbData ? (
+                ) : currentSensorData ? (
                   <CodeBlock
-                    code={JSON.stringify(rtdbData, null, 2)}
+                    code={JSON.stringify(currentSensorData, (key, value) => {
+                      // Pretty-print Firestore Timestamps
+                      if (value && value.seconds) {
+                        return new Date(value.seconds * 1000).toISOString();
+                      }
+                      return value;
+                    }, 2)}
                     language="json"
                   />
                 ) : (
-                  <p className="text-sm text-muted-foreground">No data available at this path.</p>
+                  <p className="text-sm text-muted-foreground">No data available at this path. Waiting for first transmission from the device.</p>
                 )}
               </CardContent>
             </Card>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
@@ -331,15 +311,15 @@ export default function Page() {
         </Card>
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Battery State</CardTitle>
+            <CardTitle>Battery SOC</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <BatteryStateChart />
+             {isLoading ? <Skeleton className="h-full w-full" /> :
+              <p className="text-3xl font-bold">{batterySoc.toFixed(1)}%</p>
+            }
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
-
-    
