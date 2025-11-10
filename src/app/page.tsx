@@ -35,6 +35,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CodeBlock } from '@/components/code-block';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { AiAlertEngine } from '@/components/dashboard/ai-alert-engine';
+
 
 const communityUsers = {
   'Community A': '0nkCeSiTQbcTEhEMcUhQwYT39U72',
@@ -98,6 +100,7 @@ export default function Page() {
 
   return (
     <div className="flex flex-col gap-6">
+      <AiAlertEngine communityId={selectedCommunity} sensorData={currentSensorData} />
       <Card className="bg-primary text-primary-foreground">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -149,7 +152,7 @@ export default function Page() {
               <CardTitle className="flex items-center gap-2"><HardDrive />Connecting...</CardTitle>
             </CardHeader>
             <CardContent>
-                <p className="text-muted-foreground">Waiting for first data transmission from your ESP32 device to Firestore for {selectedCommunity}...</p>
+                <p className="text-muted-foreground">Waiting for first data transmission from your ESP32 device for {selectedCommunity}...</p>
                 <p className="text-xs text-muted-foreground mt-2">This can take up to 15 seconds after the device is powered on.</p>
             </CardContent>
         </Card>
