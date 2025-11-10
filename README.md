@@ -1,4 +1,4 @@
-noVoltaView - Smart Solar Microgrid Management Dashboard
+VoltaView - Smart Solar Microgrid Management Dashboard
 
 VoltaView is a comprehensive, real-time dashboard for monitoring and managing a decentralized solar microgrid. Built with Next.js and Firebase, it provides a powerful interface for tracking energy generation, consumption across multiple communities, and system health. The application leverages AI for predictive maintenance alerts and insightful performance reports.
 
