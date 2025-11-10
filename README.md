@@ -1,4 +1,4 @@
-VoltaView - Smart Solar Microgrid Management Dashboard
+noVoltaView - Smart Solar Microgrid Management Dashboard
 
 VoltaView is a comprehensive, real-time dashboard for monitoring and managing a decentralized solar microgrid. Built with Next.js and Firebase, it provides a powerful interface for tracking energy generation, consumption across multiple communities, and system health. The application leverages AI for predictive maintenance alerts and insightful performance reports.
 
@@ -119,4 +119,4 @@ The application will now be running at `http://localhost:9002`.
 4.  Important: In the firmware file, update the `WIFI_SSID` and `WIFI_PASSWORD` constants with your local WiFi network credentials. The Firebase project details are already included.
 5.  Flash the firmware to your ESP32 device. Once it connects to your WiFi, it will begin authenticating and sending data to your Firestore database, which will appear on the dashboard.
 
-Application Provided by Abubakar Maji Saddiq GitHub username TheFlow442
+Application Provided by Abubakar Maji Saddiq GitHub  TheFlow442 https://github.com/TheFlow442/One
