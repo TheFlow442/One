@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CodeBlock } from '@/components/code-block';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { AiAlertEngine } from '@/components/dashboard/ai-alert-engine';
+import { BatteryStateChart } from '@/components/dashboard/battery-state-chart';
 
 
 const communityUsers = {
@@ -97,6 +98,13 @@ export default function Page() {
   const current = currentSensorData?.inverterI ?? 0;
   const temperature = currentSensorData?.batteryTemp ?? 0;
   const supplyVoltage = currentSensorData?.supplyVoltage ?? 0;
+
+  const solarGenerationValue = (currentSensorData?.panelV ?? 0) * (currentSensorData?.panelI ?? 0);
+  const communityDistributionData = [
+    { name: "A", value: (currentSensorData?.comA_V ?? 0) * (currentSensorData?.comA_I ?? 0) },
+    { name: "B", value: (currentSensorData?.comB_V ?? 0) * (currentSensorData?.comB_I ?? 0) },
+    { name: "C", value: (currentSensorData?.comC_V ?? 0) * (currentSensorData?.comC_I ?? 0) },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -260,8 +268,13 @@ export default function Page() {
       </div>
 
       <Card>
-        <CardContent className="h-[300px] p-0 pt-6">
-          <SolarGenerationChart />
+         <CardHeader>
+          <CardTitle>Live Solar Generation</CardTitle>
+        </CardHeader>
+        <CardContent className="h-[300px] p-6 pt-0">
+          {isLoading ? <Skeleton className="h-full w-full" /> : 
+            <SolarGenerationChart value={solarGenerationValue} />
+          }
         </CardContent>
       </Card>
       
@@ -309,16 +322,23 @@ export default function Page() {
             <CardTitle>Community Distribution Today</CardTitle>
           </CardHeader>
           <CardContent className="h-[250px] pt-0">
-            <CommunityDistributionChart />
+             {isLoading ? <Skeleton className="h-full w-full" /> :
+                <CommunityDistributionChart data={communityDistributionData} />
+             }
           </CardContent>
         </Card>
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Battery SOC</CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent className="pt-0 h-[250px] flex items-center justify-center">
              {isLoading ? <Skeleton className="h-full w-full" /> :
-              <p className="text-3xl font-bold">{batterySoc.toFixed(1)}%</p>
+              <BatteryStateChart 
+                value={batterySoc} 
+                voltage={currentSensorData?.batteryV ?? 0}
+                chargeRate={(currentSensorData?.batteryI ?? 0) / 100} // Assuming 100Ah battery for C-rate
+                health={100 - Math.abs(temperature - 25)} // Simple health metric
+              />
             }
           </CardContent>
         </Card>

@@ -1,3 +1,4 @@
+
 'use client';
 import {
   ResponsiveContainer,
@@ -6,11 +7,18 @@ import {
   PolarAngleAxis,
 } from 'recharts';
 
-const data = [{ name: 'Health', value: 92, fill: 'hsl(var(--primary))' }];
+interface BatteryStateChartProps {
+    value: number;
+    voltage: number;
+    chargeRate: number;
+    health: number;
+}
 
-export function BatteryStateChart() {
+export function BatteryStateChart({ value, voltage, chargeRate, health }: BatteryStateChartProps) {
+  const data = [{ name: 'SOC', value: value, fill: 'hsl(var(--primary))' }];
+
   return (
-    <ResponsiveContainer width="100%" height={200}>
+    <ResponsiveContainer width="100%" height="100%">
       <RadialBarChart
         innerRadius="70%"
         outerRadius="100%"
@@ -38,7 +46,7 @@ export function BatteryStateChart() {
           dominantBaseline="middle"
           className="text-5xl font-bold fill-foreground"
         >
-          {data[0].value}%
+          {data[0].value.toFixed(0)}%
         </text>
          <text
           x="50%"
@@ -47,7 +55,7 @@ export function BatteryStateChart() {
           dominantBaseline="middle"
           className="text-xs fill-muted-foreground"
         >
-          Voltage: 51.8V | Charge Rate: 0.4C | Health Index: 92%
+          {`Voltage: ${voltage.toFixed(1)}V | Charge Rate: ${chargeRate.toFixed(2)}C | Health: ${health.toFixed(0)}%`}
         </text>
       </RadialBarChart>
     </ResponsiveContainer>

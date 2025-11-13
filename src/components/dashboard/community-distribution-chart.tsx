@@ -1,17 +1,16 @@
+
 "use client"
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
-const chartData = [
-  { name: "A", value: 6 },
-  { name: "B", value: 4 },
-  { name: "C", value: 3 },
-];
+interface CommunityDistributionChartProps {
+  data: { name: string; value: number }[];
+}
 
-export function CommunityDistributionChart() {
+export function CommunityDistributionChart({ data }: CommunityDistributionChartProps) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
+      <BarChart data={data} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
         <XAxis 
           dataKey="name"
@@ -20,9 +19,8 @@ export function CommunityDistributionChart() {
           tickLine={false}
         />
         <YAxis 
-          tickFormatter={(value) => `${value} kW`}
-          domain={[0, 8]}
-          ticks={[0, 4, 8]}
+          tickFormatter={(value) => `${value.toFixed(0)} W`}
+          domain={[0, 'dataMax + 100']}
           tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
           axisLine={false}
           tickLine={false}
@@ -33,7 +31,7 @@ export function CommunityDistributionChart() {
             if (active && payload && payload.length) {
               return (
                 <div className="bg-popover p-2 rounded-lg border shadow-sm text-popover-foreground">
-                  <p className="font-bold">{`${payload[0].value} kW`}</p>
+                  <p className="font-bold">{`${payload[0].value?.toFixed(2)} W`}</p>
                 </div>
               );
             }
