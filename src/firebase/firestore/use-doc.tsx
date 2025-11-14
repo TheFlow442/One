@@ -1,4 +1,3 @@
-
 'use client';
     
 import { useState, useEffect } from 'react';
@@ -11,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useUser } from '@/firebase/provider';
 
 /** Utility type to add an 'id' field to a given type T. */
 type WithId<T> = T & { id: string };
@@ -45,20 +45,18 @@ export function useDoc<T = any>(
   type StateDataType = WithId<T> | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Start with loading true
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const { isUserLoading } = useUser();
+
+  const isLoading = isUserLoading || (!data && !error);
 
   useEffect(() => {
-    // If the ref is not ready, reset state and do nothing.
-    if (!memoizedDocRef) {
+    // If the ref is not ready, or if auth is loading, reset state and do nothing.
+    if (!memoizedDocRef || isUserLoading) {
       setData(null);
-      setIsLoading(false); // Not loading because there's nothing to load
       setError(null);
       return;
     }
-
-    setIsLoading(true);
-    setError(null);
 
     const unsubscribe = onSnapshot(
       memoizedDocRef,
@@ -70,9 +68,8 @@ export function useDoc<T = any>(
           setData(null);
         }
         setError(null); // Clear any previous error on successful snapshot
-        setIsLoading(false);
       },
-      (error: FirestoreError) => {
+      (err: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
           operation: 'get',
           path: memoizedDocRef.path,
@@ -80,7 +77,6 @@ export function useDoc<T = any>(
 
         setError(contextualError)
         setData(null)
-        setIsLoading(false)
 
         // trigger global error propagation
         errorEmitter.emit('permission-error', contextualError);
@@ -88,7 +84,7 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef]);
+  }, [memoizedDocRef, isUserLoading]);
 
   if(memoizedDocRef && !memoizedDocRef.__memo) {
      throw new Error('The document reference passed to useDoc was not properly memoized with useMemoFirebase. This will cause infinite re-renders.');
