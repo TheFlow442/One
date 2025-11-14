@@ -5,47 +5,50 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Tag } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
-import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 
+// Placeholder data for alerts
+const placeholderAlerts = [
+  {
+    id: 'alert-1',
+    title: 'High Battery Temperature Detected',
+    description: 'Battery bank temperature for Community A is currently at 48°C, which is above the safe operating threshold.',
+    timestamp: new Date(),
+    communityId: 'Community A',
+    status: 'new',
+  },
+  {
+    id: 'alert-2',
+    title: 'Inverter Underperformance',
+    description: 'Inverter for Community C is producing 30% less power than expected based on current solar irradiance.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 90), // 90 minutes ago
+    communityId: 'Community C',
+    status: 'new',
+  },
+  {
+    id: 'alert-3',
+    title: 'Acknowledged: Voltage Spike',
+    description: 'A transient voltage spike was detected on the main bus. The system recovered automatically.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
+    communityId: 'Community B',
+    status: 'acknowledged',
+  },
+];
+
+
 export default function AlertsPage() {
-  const firestore = useFirestore();
-
-  const alertsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'alerts'), orderBy('timestamp', 'desc'));
-  }, [firestore]);
-
-  const { data: alerts, isLoading } = useCollection<any>(alertsQuery);
+  const alerts = placeholderAlerts;
+  const isLoading = false; // No longer loading from a database
 
   return (
     <div className="flex flex-col gap-8">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><AlertTriangle /> Alerts</CardTitle>
-          <CardDescription>Critical events and warnings from your microgrid are listed here.</CardDescription>
+          <CardDescription>Critical events and warnings from your microgrid are listed here. (Currently displaying placeholder data).</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {isLoading ? (
-            Array.from({ length: 3 }).map((_, index) => (
-              <Card key={index} className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-4">
-                  <Skeleton className="h-6 w-6" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-3 w-64" />
-                    <Skeleton className="h-3 w-40" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Skeleton className="h-6 w-16" />
-                  <Skeleton className="h-10 w-28" />
-                </div>
-              </Card>
-            ))
-          ) : alerts && alerts.length > 0 ? (
+          {alerts && alerts.length > 0 ? (
             alerts.map((alert) => (
               <Card key={alert.id} className="flex flex-wrap items-center justify-between gap-4 p-4">
                 <div className="flex items-center gap-4">
@@ -54,7 +57,7 @@ export default function AlertsPage() {
                     <p className="font-bold">{alert.title}</p>
                     <p className="text-sm text-muted-foreground">{alert.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {alert.timestamp ? format(alert.timestamp.toDate(), 'PPpp') : 'No timestamp'}
+                      {alert.timestamp ? format(alert.timestamp, 'PPpp') : 'No timestamp'}
                     </p>
                   </div>
                 </div>
@@ -63,7 +66,7 @@ export default function AlertsPage() {
                       <Tag className="h-3 w-3"/>
                       {alert.communityId}
                     </Badge>
-                  <Badge variant="destructive">{alert.status}</Badge>
+                  <Badge variant={alert.status === 'new' ? 'destructive' : 'secondary'}>{alert.status}</Badge>
                   <Button variant="outline">Acknowledge</Button>
                 </div>
               </Card>
