@@ -1,4 +1,6 @@
-VoltaView - Smart Solar Microgrid Management Dashboard
+# VoltaView - Smart Solar Microgrid Management Dashboard
+
+[![Netlify Status](https://api.netlify.com/api/v1/badges/943d8d2e-3788-4279-af41-714d675d53ff/deploy-status)](https://app.netlify.com/projects/m0n3y/deploys)
 
 VoltaView is a comprehensive, real-time dashboard for monitoring and managing a decentralized solar microgrid. Built with Next.js and Firebase, it provides a powerful interface for tracking energy generation, consumption across multiple communities, and system health. The application leverages AI for predictive maintenance alerts and insightful performance reports.
 
