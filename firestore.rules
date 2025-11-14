@@ -3,17 +3,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can only access their own data
+    // Users can only access their own data. This rule applies to the esp32_data subcollection.
     match /users/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
     // Rules for the alerts collection
     match /alerts/{alertId} {
-      // Allow authenticated users to read individual alerts and list the collection
-      allow read, list: if request.auth != null;
+      // Allow any authenticated user (including anonymous) to read/list alerts.
+      allow read: if request.auth != null;
       
-      // Allow writes only from the backend/AI flow (no user auth)
+      // Allow writes only from the backend/server-side AI flow (which has no user auth object).
       allow create: if request.auth == null;
     }
   }

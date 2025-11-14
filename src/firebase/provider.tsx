@@ -5,7 +5,7 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Database } from 'firebase/database';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { Auth, User, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
@@ -61,6 +61,9 @@ export interface UserHookResult {
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
 const createUserProfileDocument = (firestore: Firestore, user: User) => {
+    // Only create a profile for non-anonymous users with an email
+    if (user.isAnonymous || !user.email) return;
+
     const userRef = doc(firestore, 'users', user.uid);
     const userProfile = {
       email: user.email,
@@ -108,15 +111,20 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       return;
     }
 
-    setUserAuthState({ user: auth.currentUser, isUserLoading: true, userError: null });
-
     const unsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => {
         if (firebaseUser) {
-            createUserProfileDocument(firestore, firebaseUser);
+          // User is signed in.
+          createUserProfileDocument(firestore, firebaseUser);
+          setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+        } else {
+          // User is signed out. Attempt anonymous sign-in.
+          signInAnonymously(auth).catch((error) => {
+             console.error("Anonymous sign-in failed:", error);
+             setUserAuthState({ user: null, isUserLoading: false, userError: error });
+          });
         }
-        setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => {
         console.error("FirebaseProvider: onAuthStateChanged error:", error);
