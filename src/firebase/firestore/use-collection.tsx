@@ -67,9 +67,7 @@ export function useCollection<T = any>(
   useEffect(() => {
     // If the query isn't ready OR if the user is still being authenticated, wait.
     if (!memoizedTargetRefOrQuery || isUserLoading) {
-      setData(null);
-      setIsLoading(isUserLoading); // Reflect auth loading state
-      setError(null);
+      setIsLoading(true);
       return;
     }
 
