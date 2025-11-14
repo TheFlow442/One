@@ -1,39 +1,53 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Tag } from 'lucide-react';
-import { format } from 'date-fns';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
-import { Skeleton } from '@/components/ui/skeleton';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+
+const placeholderAlerts = [
+  {
+    id: '1',
+    title: 'High Battery Temperature',
+    description: 'Battery temperature has exceeded the 40°C threshold. Current temperature is 42.5°C.',
+    communityId: 'Community A',
+    timestamp: '2024-05-23T14:30:00Z',
+    status: 'new',
+  },
+  {
+    id: '2',
+    title: 'Inverter Underperformance',
+    description: 'Inverter output is zero while solar irradiance is high (550 W/m^2). Check for inverter fault.',
+    communityId: 'Community B',
+    timestamp: '2024-05-23T11:15:00Z',
+    status: 'new',
+  },
+  {
+    id: '3',
+    title: 'Unusual Voltage Spike',
+    description: 'Inverter voltage spiked to 245V, which is above the safe threshold of 240V.',
+    communityId: 'Community C',
+    timestamp: '2024-05-22T18:05:00Z',
+    status: 'acknowledged',
+  },
+];
+
+const formatTimestamp = (isoString: string) => {
+  try {
+    const date = new Date(isoString);
+    // Use a simple, non-locale-dependent format
+    return date.toUTCString();
+  } catch (e) {
+    return 'Invalid date';
+  }
+};
+
 
 export default function AlertsPage() {
-  const firestore = useFirestore();
 
-  const alertsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'alerts'), orderBy('timestamp', 'desc'));
-  }, [firestore]);
-
-  const { data: alerts, isLoading } = useCollection<any>(alertsQuery);
-
-  const handleAcknowledge = (alertId: string) => {
-    if (!firestore) return;
-    const alertRef = doc(firestore, 'alerts', alertId);
-    updateDoc(alertRef, { status: 'acknowledged' })
-      .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-            path: alertRef.path,
-            operation: 'update',
-            requestResourceData: { status: 'acknowledged' },
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
-  };
+  const alerts = placeholderAlerts;
+  const isLoading = false; // Data is now static, so it's never loading.
 
   return (
     <div className="flex flex-col gap-8">
@@ -43,24 +57,7 @@ export default function AlertsPage() {
           <CardDescription>Critical events and warnings from your microgrid are listed here.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {isLoading ? (
-            Array.from({ length: 3 }).map((_, index) => (
-              <Card key={index} className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-4">
-                  <Skeleton className="h-6 w-6" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-3 w-64" />
-                    <Skeleton className="h-3 w-40" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Skeleton className="h-6 w-16" />
-                  <Skeleton className="h-10 w-28" />
-                </div>
-              </Card>
-            ))
-          ) : alerts && alerts.length > 0 ? (
+          {alerts && alerts.length > 0 ? (
             alerts.map((alert) => (
               <Card key={alert.id} className="flex flex-wrap items-center justify-between gap-4 p-4">
                 <div className="flex items-center gap-4">
@@ -69,7 +66,7 @@ export default function AlertsPage() {
                     <p className="font-bold">{alert.title}</p>
                     <p className="text-sm text-muted-foreground">{alert.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {alert.timestamp ? format(alert.timestamp.toDate(), 'PPpp') : 'No timestamp'}
+                      {formatTimestamp(alert.timestamp)}
                     </p>
                   </div>
                 </div>
@@ -80,7 +77,7 @@ export default function AlertsPage() {
                     </Badge>
                   <Badge variant={alert.status === 'new' ? 'destructive' : 'secondary'}>{alert.status}</Badge>
                   {alert.status === 'new' && (
-                    <Button variant="outline" onClick={() => handleAcknowledge(alert.id)}>Acknowledge</Button>
+                    <Button variant="outline" disabled>Acknowledge</Button>
                   )}
                 </div>
               </Card>
