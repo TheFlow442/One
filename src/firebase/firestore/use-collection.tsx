@@ -60,19 +60,20 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   const { isUserLoading } = useUser(); // Get auth loading state
+  
+  // The true loading state depends on auth being ready AND the query running.
+  const isLoading = isUserLoading || !data && !error;
 
   useEffect(() => {
-    // If the query isn't ready OR if the user is still being authenticated, wait.
+    // If the query isn't ready OR if the user is still being authenticated, do nothing.
     if (!memoizedTargetRefOrQuery || isUserLoading) {
-      setIsLoading(true);
+      // When dependencies change and we need to wait, clear old data.
+      setData(null);
+      setError(null);
       return;
     }
-
-    setIsLoading(true);
-    setError(null);
 
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
@@ -83,7 +84,6 @@ export function useCollection<T = any>(
         });
         setData(results);
         setError(null);
-        setIsLoading(false);
       },
       (error: FirestoreError) => {
         // This logic extracts the path from either a ref or a query
@@ -99,7 +99,6 @@ export function useCollection<T = any>(
 
         setError(contextualError)
         setData(null)
-        setIsLoading(false)
 
         // trigger global error propagation
         errorEmitter.emit('permission-error', contextualError);
