@@ -1,11 +1,10 @@
-
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Database } from 'firebase/database';
-import { Auth, User, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
@@ -115,16 +114,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth,
       (firebaseUser) => {
         if (firebaseUser) {
-          // User is signed in.
-          createUserProfileDocument(firestore, firebaseUser);
-          setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
-        } else {
-          // User is signed out. Attempt anonymous sign-in.
-          signInAnonymously(auth).catch((error) => {
-             console.error("Anonymous sign-in failed:", error);
-             setUserAuthState({ user: null, isUserLoading: false, userError: error });
-          });
+            createUserProfileDocument(firestore, firebaseUser);
         }
+        setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => {
         console.error("FirebaseProvider: onAuthStateChanged error:", error);

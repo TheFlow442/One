@@ -41,12 +41,9 @@ export interface InternalQuery extends Query<DocumentData> {
 
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
- * Handles nullable references/queries.
+ * Handles nullable references/queries and waits for authentication to be resolved.
  * 
- *
- * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
- * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
- * references
+ * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery with useMemoFirebase or infinite re-renders will occur.
  *  
  * @template T Optional type for document data. Defaults to any.
  * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
@@ -64,12 +61,11 @@ export function useCollection<T = any>(
   const { isUserLoading } = useUser(); // Get auth loading state
   
   // The true loading state depends on auth being ready AND the query running.
-  const isLoading = isUserLoading || !data && !error;
+  const isLoading = isUserLoading || (!data && !error);
 
   useEffect(() => {
     // If the query isn't ready OR if the user is still being authenticated, do nothing.
     if (!memoizedTargetRefOrQuery || isUserLoading) {
-      // When dependencies change and we need to wait, clear old data.
       setData(null);
       setError(null);
       return;
@@ -85,7 +81,7 @@ export function useCollection<T = any>(
         setData(results);
         setError(null);
       },
-      (error: FirestoreError) => {
+      (err: FirestoreError) => {
         // This logic extracts the path from either a ref or a query
         const path: string =
           memoizedTargetRefOrQuery.type === 'collection'
@@ -97,8 +93,8 @@ export function useCollection<T = any>(
           path,
         })
 
-        setError(contextualError)
-        setData(null)
+        setError(contextualError);
+        setData(null);
 
         // trigger global error propagation
         errorEmitter.emit('permission-error', contextualError);

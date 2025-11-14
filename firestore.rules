@@ -10,7 +10,7 @@ service cloud.firestore {
 
     // Rules for the alerts collection
     match /alerts/{alertId} {
-      // Allow any authenticated user (including anonymous) to read/list alerts.
+      // Allow any authenticated user (including the ESP32 users) to read/list alerts.
       allow read: if request.auth != null;
       
       // Allow writes only from the backend/server-side AI flow (which has no user auth object).
