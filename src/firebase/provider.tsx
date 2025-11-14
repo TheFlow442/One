@@ -95,7 +95,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     userError: null,
   });
 
-  const areServicesAvailable = !!(firebaseApp && firestore && auth && database && !userAuthState.isUserLoading);
+  const areServicesAvailable = !!(firebaseApp && firestore && auth && database);
   const areServicesLoading = userAuthState.isUserLoading;
 
   useEffect(() => {
