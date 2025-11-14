@@ -4,7 +4,7 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Database } from 'firebase/database';
-import { Auth, User, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
@@ -27,7 +27,7 @@ interface UserAuthState {
 // Combined state for the Firebase context
 export interface FirebaseContextState {
   areServicesAvailable: boolean;
-  areServicesLoading: boolean; // This is now equivalent to isUserLoading
+  areServicesLoading: boolean; 
   firebaseApp: FirebaseApp | null;
   firestore: Firestore | null;
   database: Database | null;
@@ -46,7 +46,7 @@ export interface FirebaseServicesAndUser {
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
-  areServicesLoading: boolean; // This is now equivalent to isUserLoading
+  areServicesLoading: boolean;
 }
 
 // Return type for useUser() - specific to user auth state
@@ -108,24 +108,15 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
     const unsubscribe = onAuthStateChanged(
       auth,
-      async (firebaseUser) => {
+      (firebaseUser) => {
         if (firebaseUser) {
             // User is signed in.
             if (!firebaseUser.isAnonymous) {
               createUserProfileDocument(firestore, firebaseUser);
             }
-            setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
-        } else {
-            // No user is signed in, so sign them in anonymously.
-            try {
-              const userCredential = await signInAnonymously(auth);
-              // The onAuthStateChanged listener will fire again with the new anonymous user.
-              // We don't need to set state here, as the listener will handle it.
-            } catch (error) {
-              console.error("FirebaseProvider: Anonymous sign-in error:", error);
-              setUserAuthState({ user: null, isUserLoading: false, userError: error as Error });
-            }
         }
+        // Whether user is signed in or null, the auth state is now resolved.
+        setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => {
         console.error("FirebaseProvider: onAuthStateChanged error:", error);
