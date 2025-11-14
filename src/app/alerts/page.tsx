@@ -13,7 +13,7 @@ const placeholderAlerts = [
     id: 'alert-1',
     title: 'High Battery Temperature Detected',
     description: 'Battery bank temperature for Community A is currently at 48°C, which is above the safe operating threshold.',
-    timestamp: new Date(),
+    timestamp: new Date('2024-07-29T10:30:00Z'),
     communityId: 'Community A',
     status: 'new',
   },
@@ -21,7 +21,7 @@ const placeholderAlerts = [
     id: 'alert-2',
     title: 'Inverter Underperformance',
     description: 'Inverter for Community C is producing 30% less power than expected based on current solar irradiance.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 90), // 90 minutes ago
+    timestamp: new Date('2024-07-29T09:00:00Z'), 
     communityId: 'Community C',
     status: 'new',
   },
@@ -29,7 +29,7 @@ const placeholderAlerts = [
     id: 'alert-3',
     title: 'Acknowledged: Voltage Spike',
     description: 'A transient voltage spike was detected on the main bus. The system recovered automatically.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
+    timestamp: new Date('2024-07-29T06:30:00Z'),
     communityId: 'Community B',
     status: 'acknowledged',
   },
