@@ -7,5 +7,12 @@ service cloud.firestore {
     match /users/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Allow authenticated users to read system-wide alerts
+    match /alerts/{alertId} {
+      allow read: if request.auth != null;
+      // Allow writes only from the backend/AI flow (no user auth)
+      allow create: if request.auth == null;
+    }
   }
 }
