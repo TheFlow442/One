@@ -96,6 +96,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   });
 
   const areServicesAvailable = !!(firebaseApp && firestore && auth && database);
+  // The services are truly loading until the first auth state has been determined.
   const areServicesLoading = userAuthState.isUserLoading;
 
   useEffect(() => {
@@ -231,3 +232,5 @@ export const useUser = (): UserHookResult => {
     userError: context.userError 
   };
 };
+
+    

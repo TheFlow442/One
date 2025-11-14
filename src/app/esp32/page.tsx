@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,8 +31,8 @@ export default function ESP32Page() {
 #include "soc/rtc_cntl_reg.h"
 
 // -------- WIFI & FIREBASE CONFIG --------
-const char* WIFI_SSID = "YOUR_WIFI_SSID";
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+const char* WIFI_SSID = "MyWiFiNetwork";
+const char* WIFI_PASSWORD = "password123";
 const char* WEB_API_KEY = "${apiKey}";
 const char* PROJECT_ID = "${projectId}";
 
@@ -352,41 +351,5 @@ void sendDataToFirestore(String& idToken,const Community& community){
   else Serial.printf("Upload failed for %s: %d\n",community.name,code);
 }
 
-`;
-  
-  return (
-    <div className="flex flex-col gap-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Cpu /> ESP32 Connection Guide</CardTitle>
-          <CardDescription>
-            Follow these steps to connect your ESP32 to the VoltaView dashboard. This firmware
-            sends live sensor data to your Firebase project.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-           <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Important: Update WiFi Credentials</AlertTitle>
-              <AlertDescription>
-                  Before flashing this firmware, you **must** update the `WIFI_SSID` and `WIFI_PASSWORD` constants with your local WiFi network credentials. The app will not connect without them.
-              </AlertDescription>
-          </Alert>
-
-          <Alert>
-              <ShieldCheck className="h-4 w-4" />
-              <AlertTitle>Definitive Firmware (Firestore-Only)</AlertTitle>
-              <AlertDescription>
-                  This code is the official version for the project. It sends all sensor data directly to Firestore and is designed to be compatible with the web application's data reading logic. It includes the brownout detector fix.
-              </AlertDescription>
-          </Alert>
-          
-          <CodeBlock
-            code={arduinoCode}
-            language="cpp"
-          />
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+`
+    
