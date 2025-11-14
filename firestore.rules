@@ -10,13 +10,17 @@ service cloud.firestore {
 
     // Rules for the alerts collection
     match /alerts/{alertId} {
-      // Allow any authenticated user (including anonymous) to read alerts.
-      allow read: if request.auth != null;
+      // Allow anyone to read alerts.
+      allow read;
       
-      // Allow writes only from the backend/server-side AI flow (which has no user auth object).
-      // Also allow authenticated users to update the status to acknowledged.
+      // Allow writes only from the backend/server-side AI flow.
+      // In security rules, server-side requests have `request.auth == null`.
       allow create: if request.auth == null;
-      allow update: if request.auth != null && request.resource.data.status == 'acknowledged';
+
+      // Allow any authenticated user to update an alert's status to 'acknowledged'.
+      allow update: if request.auth != null 
+                    && request.resource.data.status == 'acknowledged'
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
     }
   }
 }
