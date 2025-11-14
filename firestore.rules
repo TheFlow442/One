@@ -8,9 +8,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Allow authenticated users to read system-wide alerts
+    // Rules for the alerts collection
     match /alerts/{alertId} {
-      allow read: if request.auth != null;
+      // Allow authenticated users to read individual alerts and list the collection
+      allow read, list: if request.auth != null;
+      
       // Allow writes only from the backend/AI flow (no user auth)
       allow create: if request.auth == null;
     }
