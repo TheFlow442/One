@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -80,7 +79,9 @@ export default function AlertsPage() {
                       {alert.communityId}
                     </Badge>
                   <Badge variant={alert.status === 'new' ? 'destructive' : 'secondary'}>{alert.status}</Badge>
-                  <Button variant="outline" onClick={() => handleAcknowledge(alert.id)}>Acknowledge</Button>
+                  {alert.status === 'new' && (
+                    <Button variant="outline" onClick={() => handleAcknowledge(alert.id)}>Acknowledge</Button>
+                  )}
                 </div>
               </Card>
             ))

@@ -232,5 +232,3 @@ export const useUser = (): UserHookResult => {
     userError: context.userError 
   };
 };
-
-    

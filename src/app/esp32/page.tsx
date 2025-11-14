@@ -32,7 +32,7 @@ export default function ESP32Page() {
 
 // -------- WIFI & FIREBASE CONFIG --------
 const char* WIFI_SSID = "MyWiFiNetwork";
-const char* WIFI_PASSWORD = "password123";
+const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 const char* WEB_API_KEY = "${apiKey}";
 const char* PROJECT_ID = "${projectId}";
 
@@ -350,6 +350,69 @@ void sendDataToFirestore(String& idToken,const Community& community){
   if(code>=200 && code<300) Serial.printf("Data sent to %s: %d\n",community.name,code);
   else Serial.printf("Upload failed for %s: %d\n",community.name,code);
 }
+`;
 
-`
-    
+  return (
+    <div className="flex flex-col gap-8">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Cpu /> ESP32 Firmware & Connection Guide
+          </CardTitle>
+          <CardDescription>
+            Use this code to flash your ESP32 microcontroller. It's pre-configured
+            to securely authenticate and send real-time sensor data to your
+            VoltaView dashboard.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Update WiFi Credentials</AlertTitle>
+            <AlertDescription>
+              Before flashing, you **must** update the `WIFI_SSID` and `WIFI_PASSWORD`
+              variables in the code below with your own network details.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+      <Card>
+         <CardHeader>
+            <CardTitle>Complete Firmware Code</CardTitle>
+            <CardDescription>This code includes all required libraries, sensor configurations, and communication logic.</CardDescription>
+         </CardHeader>
+         <CardContent>
+            <CodeBlock code={arduinoCode} language="cpp" />
+         </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ShieldCheck/> Authentication</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
+              <li>The firmware uses the pre-configured community user accounts (`user1@volta.view`, etc.) to authenticate.</li>
+              <li>It automatically fetches and refreshes authentication tokens every 55 minutes.</li>
+              <li>Data is sent to a secure, user-specific path in Firestore (`/users/{userId}/esp32_data`).</li>
+            </ul>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Lightbulb/> Features</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
+                <li>**Non-blocking:** Sensor reads and data uploads run on separate timers to keep the main loop responsive.</li>
+                <li>**Resilient:** The code will continuously try to reconnect to WiFi if the connection is lost.</li>
+                <li>**Stable:** The ESP32's brownout detector is disabled to prevent unexpected restarts on unstable power.</li>
+                <li>**Informative:** The onboard LED blinks to indicate successful data uploads or authentication failures.</li>
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
