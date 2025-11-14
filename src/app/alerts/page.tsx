@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Tag } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function AlertsPage() {
   const firestore = useFirestore();
@@ -21,9 +23,17 @@ export default function AlertsPage() {
   const { data: alerts, isLoading } = useCollection<any>(alertsQuery);
 
   const handleAcknowledge = (alertId: string) => {
-    // In a real app, you would update the alert status in Firestore.
-    // For now, it's just a placeholder action.
-    alert(`Acknowledged alert ID: ${alertId}`);
+    if (!firestore) return;
+    const alertRef = doc(firestore, 'alerts', alertId);
+    updateDoc(alertRef, { status: 'acknowledged' })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: alertRef.path,
+            operation: 'update',
+            requestResourceData: { status: 'acknowledged' },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
   };
 
   return (
