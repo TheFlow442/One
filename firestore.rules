@@ -10,8 +10,8 @@ service cloud.firestore {
 
     // Rules for the alerts collection
     match /alerts/{alertId} {
-      // Allow anyone to read alerts.
-      allow read;
+      // Allow any authenticated user (including anonymous) to read alerts.
+      allow read: if request.auth != null;
       
       // Allow writes only from the backend/server-side AI flow.
       // In security rules, server-side requests have `request.auth == null`.

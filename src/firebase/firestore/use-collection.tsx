@@ -7,8 +7,7 @@ import {
   DocumentData,
   FirestoreError,
   QuerySnapshot,
-  CollectionReference,
-  Timestamp
+  CollectionReference
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';

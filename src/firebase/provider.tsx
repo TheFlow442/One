@@ -4,7 +4,7 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Database } from 'firebase/database';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { Auth, User, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
@@ -27,7 +27,7 @@ interface UserAuthState {
 // Combined state for the Firebase context
 export interface FirebaseContextState {
   areServicesAvailable: boolean;
-  areServicesLoading: boolean;
+  areServicesLoading: boolean; // This is now equivalent to isUserLoading
   firebaseApp: FirebaseApp | null;
   firestore: Firestore | null;
   database: Database | null;
@@ -46,7 +46,7 @@ export interface FirebaseServicesAndUser {
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
-  areServicesLoading: boolean;
+  areServicesLoading: boolean; // This is now equivalent to isUserLoading
 }
 
 // Return type for useUser() - specific to user auth state
@@ -91,12 +91,13 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 }) => {
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
     user: null,
-    isUserLoading: true,
+    isUserLoading: true, // Start as true until first auth check completes
     userError: null,
   });
 
   const areServicesAvailable = !!(firebaseApp && firestore && auth && database);
-  // The services are truly loading until the first auth state has been determined.
+  
+  // The entire app is in a loading state until the user's auth status is resolved.
   const areServicesLoading = userAuthState.isUserLoading;
 
   useEffect(() => {
@@ -107,15 +108,24 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
     const unsubscribe = onAuthStateChanged(
       auth,
-      (firebaseUser) => {
+      async (firebaseUser) => {
         if (firebaseUser) {
             // User is signed in.
             if (!firebaseUser.isAnonymous) {
               createUserProfileDocument(firestore, firebaseUser);
             }
+            setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+        } else {
+            // No user is signed in, so sign them in anonymously.
+            try {
+              const userCredential = await signInAnonymously(auth);
+              // The onAuthStateChanged listener will fire again with the new anonymous user.
+              // We don't need to set state here, as the listener will handle it.
+            } catch (error) {
+              console.error("FirebaseProvider: Anonymous sign-in error:", error);
+              setUserAuthState({ user: null, isUserLoading: false, userError: error as Error });
+            }
         }
-        // Whether user is null or signed in, the auth check is complete.
-        setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => {
         console.error("FirebaseProvider: onAuthStateChanged error:", error);
@@ -151,15 +161,12 @@ export const useFirebase = (): FirebaseServicesAndUser => {
   if (context === undefined) {
     throw new Error('useFirebase must be used within a FirebaseProvider.');
   }
-  
-  if (!context.areServicesAvailable || !context.firebaseApp || !context.firestore || !context.auth || !context.database) {
-    if (context.areServicesLoading) {
-      // This is a valid state during initialization, return a loading state.
-      // Components should check areServicesLoading.
-    } else {
-      // This should ideally not happen if the provider logic is correct.
-      // throw new Error('Firebase core services not available. This is likely a race condition during initialization. Please try refreshing the page.');
-    }
+
+  // During the initial render, services might not be available, but this is handled
+  // by the `areServicesLoading` state. Components should check this flag.
+  if (!context.areServicesAvailable && !context.areServicesLoading) {
+      // This indicates a configuration problem, not a loading state.
+      throw new Error('Firebase core services not available. Check your FirebaseProvider setup.');
   }
 
   return {
