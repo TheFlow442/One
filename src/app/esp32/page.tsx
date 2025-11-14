@@ -390,5 +390,3 @@ void sendDataToFirestore(String& idToken,const Community& community){
     </div>
   );
 }
-
-    
