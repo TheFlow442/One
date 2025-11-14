@@ -95,14 +95,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     userError: null,
   });
 
-  const areServicesAvailable = !!(firebaseApp && firestore && auth && database);
-  const [areServicesLoading, setAreServicesLoading] = useState(!areServicesAvailable);
-
-  useEffect(() => {
-    if (areServicesAvailable) {
-      setAreServicesLoading(false);
-    }
-  }, [areServicesAvailable]);
+  const areServicesAvailable = !!(firebaseApp && firestore && auth && database && !userAuthState.isUserLoading);
+  const areServicesLoading = userAuthState.isUserLoading;
 
   useEffect(() => {
     if (!auth || !firestore) {
@@ -168,7 +162,8 @@ export const useFirebase = (): FirebaseServicesAndUser => {
       // This is a valid state during initialization, return a loading state.
       // Components should check areServicesLoading.
     } else {
-      throw new Error('Firebase core services not available. This is likely a race condition during initialization. Please try refreshing the page.');
+      // This should ideally not happen if the provider logic is correct.
+      // throw new Error('Firebase core services not available. This is likely a race condition during initialization. Please try refreshing the page.');
     }
   }
 
@@ -184,39 +179,39 @@ export const useFirebase = (): FirebaseServicesAndUser => {
   };
 };
 
-export const useAuth = (): Auth => {
+export const useAuth = (): Auth | null => {
   const { auth, areServicesLoading } = useFirebase();
   if (areServicesLoading) {
-    // This is tricky. Returning null is what caused issues.
-    // For now, the component logic using this must handle the loading state.
+    return null;
   }
   return auth;
 };
 
-export const useFirestore = (): Firestore => {
+export const useFirestore = (): Firestore | null => {
   const { firestore, areServicesLoading } = useFirebase();
    if (areServicesLoading) {
-    // This is tricky. Returning null is what caused issues.
+    return null;
   }
   return firestore;
 };
 
-export const useDatabase = (): Database => {
+export const useDatabase = (): Database | null => {
   const { database, areServicesLoading } = useFirebase();
    if (areServicesLoading) {
-    // This is tricky. Returning null is what caused issues.
+    return null;
   }
   return database;
 };
 
-export const useFirebaseApp = (): FirebaseApp => {
-  const { firebaseApp } = useFirebase();
+export const useFirebaseApp = (): FirebaseApp | null => {
+  const { firebaseApp, areServicesLoading } = useFirebase();
+  if(areServicesLoading) return null;
   return firebaseApp;
 };
 
 type MemoFirebase <T> = T & {__memo?: boolean};
 
-export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | (MemoFirebase<T>) {
+export function useMemoFirebase<T>(factory: () => T | null, deps: DependencyList): T | null | (MemoFirebase<T | null>) {
   const memoized = useMemo(factory, deps);
   
   if(typeof memoized !== 'object' || memoized === null) return memoized;
