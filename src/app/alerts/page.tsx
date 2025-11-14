@@ -20,6 +20,12 @@ export default function AlertsPage() {
 
   const { data: alerts, isLoading } = useCollection<any>(alertsQuery);
 
+  const handleAcknowledge = (alertId: string) => {
+    // In a real app, you would update the alert status in Firestore.
+    // For now, it's just a placeholder action.
+    alert(`Acknowledged alert ID: ${alertId}`);
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <Card>
@@ -64,7 +70,7 @@ export default function AlertsPage() {
                       {alert.communityId}
                     </Badge>
                   <Badge variant={alert.status === 'new' ? 'destructive' : 'secondary'}>{alert.status}</Badge>
-                  <Button variant="outline">Acknowledge</Button>
+                  <Button variant="outline" onClick={() => handleAcknowledge(alert.id)}>Acknowledge</Button>
                 </div>
               </Card>
             ))
