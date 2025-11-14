@@ -114,14 +114,15 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth,
       (firebaseUser) => {
         if (firebaseUser) {
-            // User is signed in.
-            createUserProfileDocument(firestore, firebaseUser);
+            // User is signed in (either normally or anonymously).
+            if (!firebaseUser.isAnonymous) {
+              createUserProfileDocument(firestore, firebaseUser);
+            }
             setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
         } else {
             // No user is signed in. Sign in anonymously.
              signInAnonymously(auth).catch((error) => {
-                // This is a critical failure, but we'll log it and let the app continue.
-                // The data hooks will handle the resulting permission errors.
+                // This is a critical failure.
                 console.error("Anonymous sign-in failed:", error);
                 setUserAuthState({ user: null, isUserLoading: false, userError: error });
              });
