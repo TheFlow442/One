@@ -32,8 +32,8 @@ export default function ESP32Page() {
 #include "soc/rtc_cntl_reg.h"
 
 // -------- WIFI & FIREBASE CONFIG --------
-const char* WIFI_SSID = "DESK";
-const char* WIFI_PASSWORD = "1234567890";
+const char* WIFI_SSID = "YOUR_WIFI_SSID";
+const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 const char* WEB_API_KEY = "${apiKey}";
 const char* PROJECT_ID = "${projectId}";
 
@@ -367,9 +367,9 @@ void sendDataToFirestore(String& idToken,const Community& community){
         <CardContent className="space-y-6">
            <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Brownout Error Detected: Hardware Power Issue</AlertTitle>
+              <AlertTitle>Important: Update WiFi Credentials</AlertTitle>
               <AlertDescription>
-                  The "Brownout detector was triggered" error is a **hardware power supply issue**. This firmware includes an aggressive fix by disabling the brownout detector. The final, most reliable solution is to use a stable power source (e.g., a high-quality USB wall adapter) and a short, high-quality USB cable.
+                  Before flashing this firmware, you **must** update the `WIFI_SSID` and `WIFI_PASSWORD` constants with your local WiFi network credentials. The app will not connect without them.
               </AlertDescription>
           </Alert>
 
