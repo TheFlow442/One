@@ -4,7 +4,7 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Database } from 'firebase/database';
-import { Auth, User, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
@@ -109,18 +109,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth,
       (firebaseUser) => {
         if (firebaseUser) {
-            // User is signed in (either normally or anonymously).
+            // User is signed in.
             if (!firebaseUser.isAnonymous) {
               createUserProfileDocument(firestore, firebaseUser);
             }
             setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
         } else {
-            // No user is signed in. Sign in anonymously.
-             signInAnonymously(auth).catch((error) => {
-                // This is a critical failure.
-                console.error("Anonymous sign-in failed:", error);
-                setUserAuthState({ user: null, isUserLoading: false, userError: error });
-             });
+            // No user is signed in.
+            setUserAuthState({ user: null, isUserLoading: false, userError: null });
         }
       },
       (error) => {
