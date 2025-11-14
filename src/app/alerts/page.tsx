@@ -4,35 +4,45 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Tag } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
-import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+
+// Static placeholder data to avoid Firebase issues and hydration errors.
+const placeholderAlerts = [
+  {
+    id: '1',
+    title: 'High Battery Temperature',
+    description: 'Battery bank temperature has exceeded the 40°C threshold.',
+    communityId: 'Community A',
+    status: 'new' as 'new' | 'acknowledged',
+    timestamp: '2024-07-29T10:30:00Z',
+  },
+  {
+    id: '2',
+    title: 'Inverter Underperformance',
+    description: 'Inverter output is lower than expected for current irradiance levels.',
+    communityId: 'Community B',
+    status: 'new' as 'new' | 'acknowledged',
+    timestamp: '2024-07-29T09:15:00Z',
+  },
+  {
+    id: '3',
+    title: 'Grid Voltage Spike',
+    description: 'Unusual inverter voltage spike (> 240V) detected.',
+    communityId: 'Community A',
+    status: 'acknowledged' as 'new' | 'acknowledged',
+    timestamp: '2024-07-28T18:05:00Z',
+  },
+];
+
 
 export default function AlertsPage() {
-  const firestore = useFirestore();
-
-  const alertsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'alerts'), orderBy('timestamp', 'desc'));
-  }, [firestore]);
-
-  const { data: alerts, isLoading } = useCollection<any>(alertsQuery);
+  // We are now using placeholder data, so no Firebase hooks are needed here.
+  const alerts = placeholderAlerts;
+  const isLoading = false; // Data is static, so it's never loading.
 
   const handleAcknowledge = (alertId: string) => {
-    if (!firestore) return;
-    const alertRef = doc(firestore, 'alerts', alertId);
-    updateDoc(alertRef, { status: 'acknowledged' })
-      .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-            path: alertRef.path,
-            operation: 'update',
-            requestResourceData: { status: 'acknowledged' },
-        });
-        errorEmitter.emit('permission-error', permissionError);
-    });
+    // This is now a placeholder function.
+    alert(`In a real app, this would acknowledge alert ${alertId}.`);
   };
 
   return (
@@ -40,27 +50,10 @@ export default function AlertsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><AlertTriangle /> Alerts</CardTitle>
-          <CardDescription>Critical events and warnings from your microgrid are listed here.</CardDescription>
+          <CardDescription>Critical events and warnings from your microgrid are listed here. (Displaying placeholder data)</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {isLoading ? (
-            Array.from({ length: 3 }).map((_, index) => (
-              <Card key={index} className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-4">
-                  <Skeleton className="h-6 w-6" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-3 w-64" />
-                    <Skeleton className="h-3 w-40" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Skeleton className="h-6 w-16" />
-                  <Skeleton className="h-10 w-28" />
-                </div>
-              </Card>
-            ))
-          ) : alerts && alerts.length > 0 ? (
+          {alerts && alerts.length > 0 ? (
             alerts.map((alert) => (
               <Card key={alert.id} className="flex flex-wrap items-center justify-between gap-4 p-4">
                 <div className="flex items-center gap-4">
@@ -69,7 +62,7 @@ export default function AlertsPage() {
                     <p className="font-bold">{alert.title}</p>
                     <p className="text-sm text-muted-foreground">{alert.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {alert.timestamp ? format(alert.timestamp.toDate(), 'PPpp') : 'No timestamp'}
+                      {format(new Date(alert.timestamp), 'PPpp')}
                     </p>
                   </div>
                 </div>
