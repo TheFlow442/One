@@ -7,6 +7,8 @@ import { Firestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Database } from 'firebase/database';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { errorEmitter } from './error-emitter';
+import { FirestorePermissionError } from './errors';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -58,7 +60,7 @@ export interface UserHookResult {
 // React Context
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
-const createUserProfileDocument = async (firestore: Firestore, user: User) => {
+const createUserProfileDocument = (firestore: Firestore, user: User) => {
     const userRef = doc(firestore, 'users', user.uid);
     const userProfile = {
       email: user.email,
@@ -66,8 +68,16 @@ const createUserProfileDocument = async (firestore: Firestore, user: User) => {
       photoURL: user.photoURL,
       createdAt: serverTimestamp(),
     };
-    // Use setDoc with merge: true to create or update the document
-    await setDoc(userRef, userProfile, { merge: true });
+    // Use setDoc with merge: true and the non-blocking error handling pattern
+    setDoc(userRef, userProfile, { merge: true })
+        .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: userRef.path,
+                operation: 'write', // 'write' covers create and update
+                requestResourceData: userProfile,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
 };
 
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
@@ -104,7 +114,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth,
       (firebaseUser) => {
         if (firebaseUser) {
-            createUserProfileDocument(firestore, firebaseUser).catch(console.error);
+            createUserProfileDocument(firestore, firebaseUser);
         }
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },

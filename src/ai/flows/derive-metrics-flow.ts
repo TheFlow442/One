@@ -12,6 +12,8 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase/client';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const DeriveMetricsInputSchema = z.object({
   communityId: z.string().describe('The ID of the community (e.g., "Community A").'),
@@ -64,22 +66,28 @@ const deriveMetricsPrompt = ai.definePrompt({
 });
 
 // Function to save alerts to Firestore
-async function saveAlertsToFirestore(alerts: DeriveMetricsOutput['maintenanceAlerts'], communityId: string) {
-    try {
-        const { firestore } = initializeFirebase();
-        const alertsCollection = collection(firestore, 'alerts');
+function saveAlertsToFirestore(alerts: DeriveMetricsOutput['maintenanceAlerts'], communityId: string) {
+    const { firestore } = initializeFirebase();
+    const alertsCollection = collection(firestore, 'alerts');
 
-        for (const alert of alerts) {
-            await addDoc(alertsCollection, {
-                ...alert,
-                communityId,
-                timestamp: serverTimestamp(),
-                status: 'new', // or 'acknowledged'
+    for (const alert of alerts) {
+        const alertData = {
+            ...alert,
+            communityId,
+            timestamp: serverTimestamp(),
+            status: 'new',
+        };
+        
+        // Use the non-blocking .catch() pattern
+        addDoc(alertsCollection, alertData)
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: alertsCollection.path,
+                    operation: 'create',
+                    requestResourceData: alertData,
+                });
+                errorEmitter.emit('permission-error', permissionError);
             });
-        }
-    } catch (error) {
-        console.error("Failed to save alerts to Firestore:", error);
-        // We don't re-throw here to avoid failing the whole flow if only Firestore write fails.
     }
 }
 
